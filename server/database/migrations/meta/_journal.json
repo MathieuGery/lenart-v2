@@ -50,6 +50,20 @@
       "when": 1773692741834,
       "tag": "0006_brainy_moira_mactaggert",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1742170000000,
+      "tag": "0007_add_contact_messages",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1742171000000,
+      "tag": "0008_contact_message_status_enum",
+      "breakpoints": true
     }
   ]
 }

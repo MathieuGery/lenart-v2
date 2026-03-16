@@ -18,6 +18,20 @@ const links = [[{
   onSelect: () => {
     open.value = false
   }
+}, {
+  label: 'Commandes',
+  icon: 'i-lucide-shopping-bag',
+  to: '/dashboard/orders',
+  onSelect: () => {
+    open.value = false
+  }
+}, {
+  label: 'Messages',
+  icon: 'i-lucide-inbox',
+  to: '/dashboard/contact',
+  onSelect: () => {
+    open.value = false
+  }
 }]] satisfies NavigationMenuItem[][]
 </script>
 

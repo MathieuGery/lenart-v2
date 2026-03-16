@@ -4,11 +4,10 @@ definePageMeta({ layout: 'public' })
 const route = useRoute()
 const orderId = route.query.orderId as string | undefined
 
-if (!orderId) {
-  throw createError({ statusCode: 400, message: 'Commande introuvable' })
-}
-
-const { data: order, status } = await useFetch(`/api/public/orders/${orderId}`)
+const { data: order, status } = await useFetch(
+  orderId ? `/api/public/orders/${orderId}` : null,
+  { default: () => null }
+)
 
 const cart = useCart()
 
@@ -29,7 +28,25 @@ watch(() => order.value?.status, (s) => {
         </div>
       </template>
 
-      <template v-else-if="order">
+      <!-- Not found -->
+      <template v-else-if="!order">
+        <div class="flex items-center gap-3">
+          <UIcon name="i-lucide-search-x" class="size-8 text-muted shrink-0" />
+          <div>
+            <h1 class="text-xl font-light">
+              Commande introuvable
+            </h1>
+            <p class="text-sm text-muted mt-1">
+              Cette commande n'existe pas ou le lien est invalide.
+            </p>
+          </div>
+        </div>
+        <UButton class="mt-6" color="neutral" to="/concours">
+          Retour aux concours
+        </UButton>
+      </template>
+
+      <template v-else>
         <!-- Paid -->
         <template v-if="order.status === 'paid'">
           <div class="flex items-center gap-3 mb-8">

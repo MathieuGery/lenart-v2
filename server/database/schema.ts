@@ -1,4 +1,6 @@
-import { pgTable, uuid, varchar, timestamp, integer, text, uniqueIndex, index } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, varchar, timestamp, integer, text, uniqueIndex, index, pgEnum } from 'drizzle-orm/pg-core'
+
+export const contactMessageStatusEnum = pgEnum('contact_message_status', ['new', 'read', 'archived'])
 
 export const admins = pgTable('admins', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -42,6 +44,16 @@ export const orders = pgTable('orders', {
 }, (table) => [
   index('orders_mollie_payment_id_idx').on(table.molliePaymentId)
 ])
+
+export const contactMessages = pgTable('contact_messages', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  email: varchar('email', { length: 255 }).notNull(),
+  subject: varchar('subject', { length: 255 }).notNull(),
+  message: text('message').notNull(),
+  status: contactMessageStatusEnum('status').notNull().default('new'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+})
 
 export const orderItems = pgTable('order_items', {
   id: uuid('id').defaultRandom().primaryKey(),
