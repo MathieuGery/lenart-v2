@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const colorMode = useColorMode()
+const cart = useCart()
 
 const links = [
   { label: 'Concours', to: '/concours' },
@@ -37,6 +38,20 @@ const links = [
               square
               @click="colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark'"
             />
+            <!-- Cart button -->
+            <button
+              type="button"
+              class="relative flex items-center justify-center size-8 text-muted hover:text-highlighted transition-colors"
+              @click="cart.isOpen.value = true"
+            >
+              <UIcon name="i-lucide-shopping-cart" class="size-4" />
+              <span
+                v-if="cart.count.value > 0"
+                class="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-primary text-(--ui-bg) text-[10px] font-medium rounded-full flex items-center justify-center leading-none"
+              >
+                {{ cart.count.value }}
+              </span>
+            </button>
             <UButton
               to="/login"
               variant="ghost"
@@ -53,6 +68,8 @@ const links = [
     <main class="flex-1">
       <slot />
     </main>
+
+    <CartDrawer />
 
     <footer class="mt-auto">
       <div class="max-w-6xl mx-auto px-6 lg:px-8 py-12">

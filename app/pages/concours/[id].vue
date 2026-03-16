@@ -19,6 +19,19 @@ watch(() => collection.value?.photos, () => {
   refreshLazy()
 })
 
+// Cart
+const cart = useCart()
+
+function handleCartToggle(photo: { id: string, filename: string, url: string }) {
+  cart.toggleCart({
+    id: photo.id,
+    filename: photo.filename,
+    url: photo.url,
+    collectionId: id,
+    collectionName: collection.value?.name ?? ''
+  })
+}
+
 // Lightbox
 const lightboxIndex = ref<number | null>(null)
 
@@ -100,13 +113,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
             ref="containerRef"
             class="mt-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"
           >
-            <button
+            <div
               v-for="(photo, index) in collection.photos"
               :key="photo.id"
-              type="button"
               class="relative aspect-4/3 overflow-hidden bg-muted/10 rounded group cursor-zoom-in"
               @click="openLightbox(index)"
             >
+              <!-- Image -->
               <img
                 class="lazy-img size-full object-cover transition-all duration-300 group-hover:scale-[1.03] group-hover:brightness-90"
                 :data-src="photo.url"
@@ -114,7 +127,29 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
                 style="opacity: 0"
                 @load="($event.target as HTMLImageElement).style.opacity = '1'"
               >
-            </button>
+
+              <!-- Selected ring -->
+              <div
+                v-if="cart.isInCart(photo.id)"
+                class="absolute inset-0 ring-2 ring-inset ring-primary rounded pointer-events-none"
+              />
+
+              <!-- Cart button -->
+              <div class="absolute bottom-2 right-2">
+                <button
+                  type="button"
+                  class="size-7 rounded-full flex items-center justify-center text-white transition-colors"
+                  :class="cart.isInCart(photo.id) ? 'bg-primary' : 'bg-black/40 hover:bg-black/60'"
+                  :title="cart.isInCart(photo.id) ? 'Retirer du panier' : 'Ajouter au panier'"
+                  @click.stop="handleCartToggle(photo)"
+                >
+                  <UIcon
+                    :name="cart.isInCart(photo.id) ? 'i-lucide-check' : 'i-lucide-shopping-cart'"
+                    class="size-3.5"
+                  />
+                </button>
+              </div>
+            </div>
           </div>
 
           <!-- Empty -->
@@ -127,6 +162,36 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
         </template>
       </div>
     </section>
+
+    <!-- Floating cart bar -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0 translate-y-4"
+        enter-to-class="opacity-100 translate-y-0"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100 translate-y-0"
+        leave-to-class="opacity-0 translate-y-4"
+      >
+        <div
+          v-if="cart.count.value > 0"
+          class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-4 px-5 py-3 rounded-full bg-default shadow-lg border border-default"
+        >
+          <span class="text-sm">
+            <span class="font-medium">{{ cart.count.value }}</span>
+            photo{{ cart.count.value > 1 ? 's' : '' }} sélectionnée{{ cart.count.value > 1 ? 's' : '' }}
+          </span>
+          <UButton
+            size="sm"
+            color="neutral"
+            trailing-icon="i-lucide-shopping-cart"
+            @click="cart.isOpen.value = true"
+          >
+            Voir le panier
+          </UButton>
+        </div>
+      </Transition>
+    </Teleport>
 
     <!-- Lightbox -->
     <Teleport to="body">
