@@ -15,12 +15,16 @@
     "db:seed": "curl http://localhost:3000/_nitro/tasks/seed"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1009.0",
+    "@aws-sdk/s3-request-presigner": "^3.1009.0",
     "@iconify-json/lucide": "^1.2.98",
     "@nuxt/ui": "^4.5.1",
     "@vueuse/core": "^14.2.1",
     "@vueuse/nuxt": "^14.2.1",
     "drizzle-orm": "^0.45.1",
     "nuxt": "^4.4.2",
+    "nuxt-auth-utils": "^0.5.29",
+    "nuxt-authorization": "^0.3.5",
     "postgres": "^3.4.8",
     "tailwindcss": "^4.2.1",
     "vue": "^3.5.30",

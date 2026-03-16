@@ -4,10 +4,10 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
   if (isPublic) return
 
-  const { loggedIn, fetchAdmin, admin } = useAuth()
+  const { loggedIn, fetch: fetchSession } = useUserSession()
 
-  if (!admin.value) {
-    await fetchAdmin()
+  if (!loggedIn.value) {
+    await fetchSession()
   }
 
   if (!loggedIn.value) {

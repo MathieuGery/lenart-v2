@@ -5,7 +5,7 @@ definePageMeta({
   layout: 'public'
 })
 
-const { login, loggedIn } = useAuth()
+const { loggedIn, fetch: fetchSession } = useUserSession()
 const toast = useToast()
 
 if (loggedIn.value) {
@@ -27,7 +27,11 @@ const loading = ref(false)
 async function onSubmit() {
   loading.value = true
   try {
-    await login(state.email, state.password)
+    await $fetch('/api/admin/login', {
+      method: 'POST',
+      body: { email: state.email, password: state.password }
+    })
+    await fetchSession()
     await navigateTo('/dashboard')
   } catch {
     toast.add({

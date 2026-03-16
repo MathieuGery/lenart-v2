@@ -10,6 +10,13 @@ const links = [[{
   onSelect: () => {
     open.value = false
   }
+}, {
+  label: 'Collections',
+  icon: 'i-lucide-image',
+  to: '/dashboard/collections',
+  onSelect: () => {
+    open.value = false
+  }
 }]] satisfies NavigationMenuItem[][]
 </script>
 

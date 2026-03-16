@@ -1,5 +1,4 @@
 import { eq } from 'drizzle-orm'
-import { randomUUID } from 'node:crypto'
 import { admins } from '~~/server/database/schema'
 import { db } from '~~/server/utils/db'
 
@@ -19,19 +18,13 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: 'Identifiants incorrects' })
   }
 
-  const token = randomUUID()
-
-  setCookie(event, 'admin-session', token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7,
-    path: '/'
+  await setUserSession(event, {
+    user: {
+      id: admin.id,
+      email: admin.email,
+      name: admin.name
+    }
   })
-
-  // Store session in memory (replace with DB/Redis in production)
-  const sessions = useStorage('sessions')
-  await sessions.setItem(token, { adminId: admin.id, email: admin.email, name: admin.name })
 
   return { admin: { email: admin.email, name: admin.name } }
 })

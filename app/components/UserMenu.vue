@@ -6,11 +6,11 @@ defineProps<{
 }>()
 
 const colorMode = useColorMode()
-const { admin, logout } = useAuth()
+const { user, clear: logout } = useUserSession()
 
 const items = computed<DropdownMenuItem[][]>(() => ([[{
   type: 'label',
-  label: admin.value?.name || 'Admin'
+  label: user.value?.name || 'Admin'
 }], [{
   label: 'Apparence',
   icon: 'i-lucide-sun-moon',
@@ -40,7 +40,10 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
 }], [{
   label: 'Se déconnecter',
   icon: 'i-lucide-log-out',
-  onSelect: () => logout()
+  async onSelect() {
+    await logout()
+    await navigateTo('/login')
+  }
 }]]))
 </script>
 
@@ -51,7 +54,7 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
     :ui="{ content: collapsed ? 'w-48' : 'w-(--reka-dropdown-menu-trigger-width)' }"
   >
     <UButton
-      :label="collapsed ? undefined : admin?.name || 'Admin'"
+      :label="collapsed ? undefined : user?.name || 'Admin'"
       :trailing-icon="collapsed ? undefined : 'i-lucide-chevrons-up-down'"
       icon="i-lucide-user"
       color="neutral"

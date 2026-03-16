@@ -8,6 +8,34 @@
       "when": 1773662316666,
       "tag": "0000_past_master_mold",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1773665713661,
+      "tag": "0001_outgoing_terror",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1773872400000,
+      "tag": "0002_add_collections_photos",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1773876000000,
+      "tag": "0003_drop_photos_url",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1773879600000,
+      "tag": "0004_add_photos_hash",
+      "breakpoints": true
     }
   ]
 }
