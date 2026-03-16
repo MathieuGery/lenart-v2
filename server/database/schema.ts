@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, timestamp, integer, text, uniqueIndex } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, varchar, timestamp, integer, text, uniqueIndex, index } from 'drizzle-orm/pg-core'
 
 export const admins = pgTable('admins', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -28,3 +28,25 @@ export const photos = pgTable('photos', {
 }, (table) => [
   uniqueIndex('photos_collection_hash_idx').on(table.collectionId, table.hash)
 ])
+
+export const orders = pgTable('orders', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  email: varchar('email', { length: 255 }).notNull(),
+  firstName: varchar('first_name', { length: 255 }).notNull(),
+  lastName: varchar('last_name', { length: 255 }).notNull(),
+  molliePaymentId: varchar('mollie_payment_id', { length: 255 }),
+  status: varchar('status', { length: 50 }).notNull().default('pending'),
+  totalCents: integer('total_cents').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => [
+  index('orders_mollie_payment_id_idx').on(table.molliePaymentId)
+])
+
+export const orderItems = pgTable('order_items', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orderId: uuid('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  photoId: uuid('photo_id').notNull().references(() => photos.id, { onDelete: 'restrict' }),
+  priceCents: integer('price_cents').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+})

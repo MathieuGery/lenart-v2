@@ -26,6 +26,12 @@ export default defineNuxtConfig({
     }
   },
 
+  runtimeConfig: {
+    public: {
+      photoPriceCents: process.env.PHOTO_PRICE_CENTS ?? '500'
+    }
+  },
+
   compatibilityDate: '2024-07-11',
 
   eslint: {

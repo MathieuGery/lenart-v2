@@ -36,6 +36,20 @@
       "when": 1773879600000,
       "tag": "0004_add_photos_hash",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1742083200000,
+      "tag": "0005_add_orders",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1773692741834,
+      "tag": "0006_brainy_moira_mactaggert",
+      "breakpoints": true
     }
   ]
 }
