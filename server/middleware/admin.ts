@@ -14,7 +14,6 @@ export default defineEventHandler(async (event) => {
   // All other API routes require authentication
   const session = await getUserSession(event)
 
-  console.log('Admin middleware session:', session)
   if (!session?.user?.id) {
     throw createError({ statusCode: 401, statusMessage: 'Non authentifié' })
   }
