@@ -1,0 +1,7 @@
+@import "tailwindcss" theme(static);
+@import "@nuxt/ui";
+
+@theme static {
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --letter-spacing-tight: -0.025em;
+}
