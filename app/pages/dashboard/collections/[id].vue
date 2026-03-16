@@ -159,6 +159,7 @@ function formatSpeed(bytesPerSec: number) {
     <template #header>
       <UDashboardNavbar :title="collection?.name || 'Collection'">
         <template #leading>
+          <UDashboardSidebarCollapse />
           <UButton
             icon="i-lucide-arrow-left"
             variant="ghost"
