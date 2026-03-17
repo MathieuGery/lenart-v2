@@ -6,9 +6,9 @@ import { db } from '~~/server/utils/db'
 const bodySchema = z.object({
   firstName: z.string().min(1).max(255),
   lastName: z.string().min(1).max(255),
-  email: z.email(),
+  email: z.string().email(),
   photoIds: z.array(z.string().uuid()).min(1).max(100),
-  paymentMethod: z.enum(['link', 'terminal']),
+  paymentMethod: z.enum(['link', 'terminal', 'cash']),
   terminalId: z.string().optional()
 }).refine(d => d.paymentMethod !== 'terminal' || !!d.terminalId, {
   message: 'terminalId requis pour le paiement par terminal',
@@ -40,12 +40,17 @@ export default defineEventHandler(async (event) => {
     firstName: body.firstName,
     lastName: body.lastName,
     totalCents,
-    status: 'pending'
+    status: body.paymentMethod === 'cash' ? 'cash' : 'pending'
   }).returning()
 
   await db.insert(orderItems).values(
     body.photoIds.map(photoId => ({ orderId: order.id, photoId, priceCents }))
   )
+
+  // Cash payment — no Mollie involved
+  if (body.paymentMethod === 'cash') {
+    return { orderId: order.id, checkoutUrl: null }
+  }
 
   // Create Mollie payment
   const mollie = getMollie()

@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm'
 import { orders } from '~~/server/database/schema'
 import { db } from '~~/server/utils/db'
 
-const VALID_STATUSES = ['pending', 'paid', 'cancelled', 'expired', 'failed'] as const
+const VALID_STATUSES = ['pending', 'paid', 'cancelled', 'expired', 'failed', 'cash'] as const
 
 const bodySchema = z.object({
   status: z.enum(VALID_STATUSES)

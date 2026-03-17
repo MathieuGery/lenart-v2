@@ -14,7 +14,8 @@ const STATUS_LABEL: Record<string, string> = {
   paid: 'Payée',
   cancelled: 'Annulée',
   expired: 'Expirée',
-  failed: 'Échouée'
+  failed: 'Échouée',
+  cash: 'Espèces'
 }
 
 const STATUS_COLOR: Record<string, 'warning' | 'success' | 'error' | 'neutral'> = {
@@ -22,7 +23,8 @@ const STATUS_COLOR: Record<string, 'warning' | 'success' | 'error' | 'neutral'> 
   paid: 'success',
   cancelled: 'neutral',
   expired: 'neutral',
-  failed: 'error'
+  failed: 'error',
+  cash: 'success'
 }
 
 const updating = ref(false)

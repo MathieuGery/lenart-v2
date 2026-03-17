@@ -8,7 +8,8 @@ const bodySchema = z.object({
   lastName: z.string().min(1).max(255),
   email: z.string().email(),
   photoIds: z.array(z.string().uuid()).min(1).max(500),
-  formulaId: z.string().uuid().optional()
+  formulaId: z.string().uuid().optional(),
+  paymentMethod: z.enum(['online', 'cash']).default('online')
 })
 
 export default defineEventHandler(async (event) => {
@@ -61,7 +62,7 @@ export default defineEventHandler(async (event) => {
     lastName: body.lastName,
     totalCents,
     formulaName,
-    status: 'pending'
+    status: body.paymentMethod === 'cash' ? 'cash' : 'pending'
   }).returning()
 
   const order = result[0]
@@ -70,6 +71,11 @@ export default defineEventHandler(async (event) => {
   await db.insert(orderItems).values(
     body.photoIds.map(photoId => ({ orderId: order.id, photoId, priceCents: priceCentsPerItem }))
   )
+
+  // Cash payment — no Mollie
+  if (body.paymentMethod === 'cash') {
+    return { checkoutUrl: null, orderId: order.id }
+  }
 
   const mollie = getMollie()
   const payment = await mollie.payments.create({

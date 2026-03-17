@@ -28,7 +28,7 @@ const form = reactive({
   firstName: '',
   lastName: '',
   email: '',
-  paymentMethod: 'link' as 'link' | 'terminal',
+  paymentMethod: 'link' as 'link' | 'terminal' | 'cash',
   terminalId: ''
 })
 const selectedPhotoIds = ref<string[]>([])
@@ -115,6 +115,9 @@ async function createOrder() {
     await refresh()
     if (form.paymentMethod === 'link' && result.checkoutUrl) {
       createdCheckoutUrl.value = result.checkoutUrl
+    } else if (form.paymentMethod === 'cash') {
+      toast.add({ title: 'Commande enregistrée — paiement en espèces', color: 'success' })
+      modalOpen.value = false
     } else {
       toast.add({ title: 'Commande envoyée au terminal', color: 'success' })
       modalOpen.value = false
@@ -141,7 +144,8 @@ const STATUS_LABEL: Record<string, string> = {
   paid: 'Payée',
   cancelled: 'Annulée',
   expired: 'Expirée',
-  failed: 'Échouée'
+  failed: 'Échouée',
+  cash: 'Espèces'
 }
 
 const STATUS_COLOR: Record<string, 'warning' | 'success' | 'error' | 'neutral'> = {
@@ -149,7 +153,8 @@ const STATUS_COLOR: Record<string, 'warning' | 'success' | 'error' | 'neutral'> 
   paid: 'success',
   cancelled: 'neutral',
   expired: 'neutral',
-  failed: 'error'
+  failed: 'error',
+  cash: 'success'
 }
 
 // Search
@@ -598,7 +603,7 @@ const filteredOrders = computed(() => {
             </p>
 
             <!-- Method selection -->
-            <div class="grid grid-cols-2 gap-3 mb-5">
+            <div class="grid grid-cols-3 gap-3 mb-5">
               <button
                 type="button"
                 class="flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors text-sm"
@@ -606,8 +611,8 @@ const filteredOrders = computed(() => {
                 @click="form.paymentMethod = 'link'"
               >
                 <UIcon name="i-lucide-link" class="size-5" />
-                <span class="font-medium">Lien de paiement</span>
-                <span class="text-xs text-muted text-center">Envoyez un lien Mollie au client</span>
+                <span class="font-medium">Lien</span>
+                <span class="text-xs text-muted text-center">Lien Mollie au client</span>
               </button>
               <button
                 type="button"
@@ -617,7 +622,17 @@ const filteredOrders = computed(() => {
               >
                 <UIcon name="i-lucide-credit-card" class="size-5" />
                 <span class="font-medium">Terminal</span>
-                <span class="text-xs text-muted text-center">Paiement sur place via TPE</span>
+                <span class="text-xs text-muted text-center">Paiement via TPE</span>
+              </button>
+              <button
+                type="button"
+                class="flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors text-sm"
+                :class="form.paymentMethod === 'cash' ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
+                @click="form.paymentMethod = 'cash'"
+              >
+                <UIcon name="i-lucide-banknote" class="size-5" />
+                <span class="font-medium">Espèces</span>
+                <span class="text-xs text-muted text-center">Paiement au stand</span>
               </button>
             </div>
 
@@ -725,7 +740,7 @@ const filteredOrders = computed(() => {
             trailing-icon="i-lucide-send"
             @click="createOrder()"
           >
-            {{ form.paymentMethod === 'terminal' ? 'Envoyer au terminal' : 'Créer le lien' }}
+            {{ form.paymentMethod === 'terminal' ? 'Envoyer au terminal' : form.paymentMethod === 'cash' ? 'Enregistrer' : 'Créer le lien' }}
           </UButton>
         </div>
       </div>

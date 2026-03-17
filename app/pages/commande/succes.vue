@@ -1,19 +1,32 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'public' })
 
+interface OrderDetail {
+  id: string
+  status: string
+  email: string
+  firstName: string
+  lastName: string
+  totalCents: number
+  photoCount: number
+  photos: { id: string, filename: string, url: string }[]
+  createdAt: string
+}
+
 const route = useRoute()
 const orderId = route.query.orderId as string | undefined
 
-const { data: order, status } = await useFetch(
+const { data: _orderData, status } = await useFetch(
   orderId ? `/api/public/orders/${orderId}` : null,
   { default: () => null }
 )
+const order = _orderData as unknown as Ref<OrderDetail | null>
 
 const cart = useCart()
 
-// Clear cart once we're on the success page with a valid paid order
+// Clear cart once we're on the success page with a valid paid or cash order
 watch(() => order.value?.status, (s) => {
-  if (s === 'paid') cart.clearCart()
+  if (s === 'paid' || s === 'cash') cart.clearCart()
 }, { immediate: true })
 </script>
 
@@ -104,6 +117,40 @@ watch(() => order.value?.status, (s) => {
           <p class="mt-6 text-xs text-muted">
             Les liens de téléchargement sont valables 24 heures.
           </p>
+        </template>
+
+        <!-- Cash -->
+        <template v-else-if="order.status === 'cash'">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="size-10 rounded-full bg-green-500/15 flex items-center justify-center shrink-0">
+              <UIcon name="i-lucide-banknote" class="size-5 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <h1 class="text-2xl font-light tracking-tight">
+                Réservation confirmée !
+              </h1>
+              <p class="text-sm text-muted mt-0.5">
+                Rendez-vous au stand pour régler en espèces.
+              </p>
+            </div>
+          </div>
+          <div class="rounded-lg border border-default p-5 space-y-2 text-sm">
+            <div class="flex justify-between">
+              <span class="text-muted">Commande</span>
+              <span class="font-mono text-xs">{{ order.id.slice(0, 8).toUpperCase() }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-muted">Photos</span>
+              <span>{{ order.photoCount }}</span>
+            </div>
+            <div class="flex justify-between font-medium">
+              <span>Total à régler</span>
+              <span>{{ (order.totalCents / 100).toFixed(2) }} €</span>
+            </div>
+          </div>
+          <UButton class="mt-6" color="neutral" to="/concours">
+            Retour aux concours
+          </UButton>
         </template>
 
         <!-- Pending -->

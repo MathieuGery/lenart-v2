@@ -1,22 +1,24 @@
 <script setup lang="ts">
 const cart = useCart()
-const router = useRouter()
 
-type View = 'cart' | 'checkout'
+type View = 'cart' | 'checkout' | 'success'
 const view = ref<View>('cart')
 
 const form = reactive({
   firstName: '',
   lastName: '',
-  email: ''
+  email: '',
+  paymentMethod: 'online' as 'online' | 'cash'
 })
 const loading = ref(false)
 const error = ref<string | null>(null)
+const confirmedOrderId = ref<string | null>(null)
 
 watch(() => cart.isOpen.value, (open) => {
   if (!open) {
     view.value = 'cart'
     error.value = null
+    confirmedOrderId.value = null
   }
 })
 
@@ -24,18 +26,26 @@ async function submitOrder() {
   error.value = null
   loading.value = true
   try {
-    const { checkoutUrl } = await $fetch<{ checkoutUrl: string }>('/api/public/checkout', {
+    const result = await $fetch<{ checkoutUrl: string | null, orderId: string }>('/api/public/checkout', {
       method: 'POST',
       body: {
         firstName: form.firstName,
         lastName: form.lastName,
         email: form.email,
         photoIds: cart.items.value.map(i => i.id),
-        formulaId: cart.formula.value?.id
+        formulaId: cart.formula.value?.id,
+        paymentMethod: form.paymentMethod
       }
     })
-    cart.isOpen.value = false
-    window.location.href = checkoutUrl
+
+    if (form.paymentMethod === 'cash') {
+      confirmedOrderId.value = result.orderId
+      cart.clearCart()
+      view.value = 'success'
+    } else {
+      cart.isOpen.value = false
+      window.location.href = result.checkoutUrl!
+    }
   } catch (e: unknown) {
     error.value = (e as { data?: { message?: string } })?.data?.message ?? 'Une erreur est survenue.'
   } finally {
@@ -89,7 +99,7 @@ async function submitOrder() {
                   <UIcon name="i-lucide-arrow-left" class="size-4" />
                 </button>
                 <h2 class="font-medium text-sm">
-                  {{ view === 'cart' ? 'Mon panier' : 'Finaliser la commande' }}
+                  {{ view === 'cart' ? 'Mon panier' : view === 'checkout' ? 'Finaliser la commande' : 'Commande confirmée' }}
                   <span v-if="view === 'cart'" class="ml-1.5 text-muted font-normal">({{ cart.count.value }})</span>
                 </h2>
               </div>
@@ -191,7 +201,7 @@ async function submitOrder() {
             </template>
 
             <!-- Checkout form view -->
-            <template v-else>
+            <template v-else-if="view === 'checkout'">
               <form
                 class="flex-1 flex flex-col"
                 @submit.prevent="submitOrder"
@@ -243,6 +253,35 @@ async function submitOrder() {
                     >
                   </div>
 
+                  <!-- Payment method -->
+                  <div class="space-y-2">
+                    <p class="text-xs font-medium">
+                      Mode de paiement
+                    </p>
+                    <div class="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        class="flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border-2 transition-colors text-sm"
+                        :class="form.paymentMethod === 'online' ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
+                        @click="form.paymentMethod = 'online'"
+                      >
+                        <UIcon name="i-lucide-credit-card" class="size-4" />
+                        <span class="font-medium text-xs">En ligne</span>
+                        <span class="text-[10px] text-muted text-center leading-tight">Paiement sécurisé Mollie</span>
+                      </button>
+                      <button
+                        type="button"
+                        class="flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border-2 transition-colors text-sm"
+                        :class="form.paymentMethod === 'cash' ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
+                        @click="form.paymentMethod = 'cash'"
+                      >
+                        <UIcon name="i-lucide-banknote" class="size-4" />
+                        <span class="font-medium text-xs">Espèces</span>
+                        <span class="text-[10px] text-muted text-center leading-tight">Paiement au stand</span>
+                      </button>
+                    </div>
+                  </div>
+
                   <p
                     v-if="error"
                     class="text-xs text-red-500"
@@ -258,15 +297,49 @@ async function submitOrder() {
                     color="neutral"
                     size="md"
                     :loading="loading"
-                    trailing-icon="i-lucide-credit-card"
+                    :trailing-icon="form.paymentMethod === 'cash' ? 'i-lucide-check' : 'i-lucide-credit-card'"
                   >
-                    Payer via Mollie
+                    {{ form.paymentMethod === 'cash' ? 'Confirmer la réservation' : 'Payer via Mollie' }}
                   </UButton>
-                  <p class="text-center text-xs text-muted/60 mt-2">
+                  <p v-if="form.paymentMethod === 'online'" class="text-center text-xs text-muted/60 mt-2">
                     Paiement sécurisé
+                  </p>
+                  <p v-else class="text-center text-xs text-muted/60 mt-2">
+                    Réglez en espèces directement au stand
                   </p>
                 </div>
               </form>
+            </template>
+
+            <!-- Success view (cash) -->
+            <template v-else>
+              <div class="flex-1 flex flex-col items-center justify-center px-6 py-10 text-center">
+                <div class="size-14 rounded-full bg-green-500/15 flex items-center justify-center mb-4">
+                  <UIcon name="i-lucide-check" class="size-7 text-green-600 dark:text-green-400" />
+                </div>
+                <h3 class="text-base font-medium mb-1">
+                  Réservation confirmée !
+                </h3>
+                <p class="text-sm text-muted mb-1">
+                  Vos photos ont été réservées.
+                </p>
+                <p class="text-sm text-muted">
+                  Rendez-vous au stand pour régler en espèces et récupérer vos photos.
+                </p>
+                <p v-if="confirmedOrderId" class="mt-4 text-xs text-muted/60 font-mono">
+                  Réf. {{ confirmedOrderId.slice(0, 8).toUpperCase() }}
+                </p>
+              </div>
+              <div class="p-4 border-t border-default">
+                <UButton
+                  block
+                  color="neutral"
+                  variant="outline"
+                  @click="cart.isOpen.value = false"
+                >
+                  Fermer
+                </UButton>
+              </div>
             </template>
           </div>
         </Transition>
