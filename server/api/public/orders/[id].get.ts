@@ -31,6 +31,7 @@ export default defineEventHandler(async (event) => {
   return {
     id: order.id,
     status: order.status,
+    cashPayment: order.cashPayment,
     email: order.email,
     firstName: order.firstName,
     lastName: order.lastName,

@@ -62,7 +62,8 @@ export default defineEventHandler(async (event) => {
     lastName: body.lastName,
     totalCents,
     formulaName,
-    status: body.paymentMethod === 'cash' ? 'cash' : 'pending'
+    cashPayment: body.paymentMethod === 'cash',
+    status: 'pending'
   }).returning()
 
   const order = result[0]

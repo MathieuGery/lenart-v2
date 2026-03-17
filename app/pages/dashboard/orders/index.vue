@@ -144,8 +144,7 @@ const STATUS_LABEL: Record<string, string> = {
   paid: 'Payée',
   cancelled: 'Annulée',
   expired: 'Expirée',
-  failed: 'Échouée',
-  cash: 'Espèces'
+  failed: 'Échouée'
 }
 
 const STATUS_COLOR: Record<string, 'warning' | 'success' | 'error' | 'neutral'> = {
@@ -153,15 +152,14 @@ const STATUS_COLOR: Record<string, 'warning' | 'success' | 'error' | 'neutral'> 
   paid: 'success',
   cancelled: 'neutral',
   expired: 'neutral',
-  failed: 'error',
-  cash: 'success'
+  failed: 'error'
 }
 
 // Search
 const search = ref('')
 
 // Sort
-type SortKey = 'createdAt' | 'firstName' | 'totalCents' | 'photoCount' | 'status'
+type SortKey = 'createdAt' | 'firstName' | 'totalCents' | 'photoCount' | 'status' | 'cashPayment'
 const sortKey = ref<SortKey>('createdAt')
 const sortDir = ref<'asc' | 'desc'>('desc')
 
@@ -205,6 +203,9 @@ const filteredOrders = computed(() => {
     } else if (sortKey.value === 'status') {
       valA = a.status
       valB = b.status
+    } else if (sortKey.value === 'cashPayment') {
+      valA = a.cashPayment ? 1 : 0
+      valB = b.cashPayment ? 1 : 0
     } else {
       valA = a[sortKey.value] as number
       valB = b[sortKey.value] as number
@@ -350,6 +351,21 @@ const filteredOrders = computed(() => {
                     />
                   </button>
                 </th>
+                <!-- Sortable: Paiement -->
+                <th class="text-left px-4 py-3 font-medium text-xs hidden md:table-cell">
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1 text-muted hover:text-highlighted transition-colors"
+                    @click="toggleSort('cashPayment')"
+                  >
+                    Paiement
+                    <UIcon
+                      :name="sortKey === 'cashPayment' ? (sortDir === 'asc' ? 'i-lucide-arrow-up' : 'i-lucide-arrow-down') : 'i-lucide-arrow-up-down'"
+                      class="size-3"
+                      :class="sortKey === 'cashPayment' ? 'text-highlighted' : 'opacity-40'"
+                    />
+                  </button>
+                </th>
                 <!-- Sortable: Date -->
                 <th class="text-left px-4 py-3 font-medium text-xs hidden lg:table-cell">
                   <button
@@ -401,6 +417,15 @@ const filteredOrders = computed(() => {
                   >
                     {{ STATUS_LABEL[order.status] ?? order.status }}
                   </UBadge>
+                </td>
+                <td class="px-4 py-3 hidden md:table-cell">
+                  <div class="flex items-center gap-1.5 text-xs">
+                    <UIcon
+                      :name="order.cashPayment ? 'i-lucide-banknote' : 'i-lucide-credit-card'"
+                      class="size-3.5 text-muted"
+                    />
+                    <span>{{ order.cashPayment ? 'Espèces' : 'En ligne' }}</span>
+                  </div>
                 </td>
                 <td class="px-4 py-3 hidden lg:table-cell text-xs text-muted">
                   {{ new Date(order.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) }}

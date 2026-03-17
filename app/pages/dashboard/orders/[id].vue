@@ -14,8 +14,7 @@ const STATUS_LABEL: Record<string, string> = {
   paid: 'Payée',
   cancelled: 'Annulée',
   expired: 'Expirée',
-  failed: 'Échouée',
-  cash: 'Espèces'
+  failed: 'Échouée'
 }
 
 const STATUS_COLOR: Record<string, 'warning' | 'success' | 'error' | 'neutral'> = {
@@ -23,8 +22,7 @@ const STATUS_COLOR: Record<string, 'warning' | 'success' | 'error' | 'neutral'> 
   paid: 'success',
   cancelled: 'neutral',
   expired: 'neutral',
-  failed: 'error',
-  cash: 'success'
+  failed: 'error'
 }
 
 const updating = ref(false)
@@ -69,7 +67,7 @@ async function updateStatus() {
         </NuxtLink>
 
         <!-- Header card -->
-        <div class="border border-default rounded-lg p-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div class="border border-default rounded-lg p-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
           <div>
             <p class="text-xs text-muted mb-1">
               Client
@@ -103,6 +101,14 @@ async function updateStatus() {
             </p>
             <p class="text-sm font-medium">
               {{ (order.totalCents / 100).toFixed(2) }} €
+            </p>
+          </div>
+          <div>
+            <p class="text-xs text-muted mb-1">
+              Paiement
+            </p>
+            <p class="text-sm font-medium">
+              {{ order.cashPayment ? 'Espèces' : 'En ligne' }}
             </p>
           </div>
           <div>

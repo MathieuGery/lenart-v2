@@ -40,9 +40,13 @@ export default defineEventHandler(async (event) => {
     firstName: body.firstName,
     lastName: body.lastName,
     totalCents,
-    status: body.paymentMethod === 'cash' ? 'cash' : 'pending'
+    cashPayment: body.paymentMethod === 'cash',
+    status: 'pending'
   }).returning()
 
+  if (!order) {
+    throw createError({ statusCode: 500, message: 'Erreur lors de la création de la commande' })
+  }
   await db.insert(orderItems).values(
     body.photoIds.map(photoId => ({ orderId: order.id, photoId, priceCents }))
   )
