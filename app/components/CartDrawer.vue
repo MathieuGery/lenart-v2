@@ -30,7 +30,8 @@ async function submitOrder() {
         firstName: form.firstName,
         lastName: form.lastName,
         email: form.email,
-        photoIds: cart.items.value.map(i => i.id)
+        photoIds: cart.items.value.map(i => i.id),
+        formulaId: cart.formula.value?.id
       }
     })
     cart.isOpen.value = false
@@ -114,6 +115,19 @@ async function submitOrder() {
             <!-- Cart view -->
             <template v-if="view === 'cart'">
               <div class="flex-1 overflow-y-auto">
+                <!-- Formule sélectionnée -->
+                <div v-if="cart.formula.value" class="px-5 py-3 border-b border-default bg-primary/5">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="text-xs font-medium">{{ cart.formula.value.name }}</p>
+                      <p v-if="cart.formula.value.printDetails" class="text-xs text-muted">
+                        + {{ cart.formula.value.printDetails }}
+                      </p>
+                    </div>
+                    <span class="text-sm font-semibold">{{ (cart.formula.value.basePriceCents / 100).toFixed(2) }} €</span>
+                  </div>
+                </div>
+
                 <template v-if="cart.items.value.length">
                   <div
                     v-for="item in cart.items.value"
@@ -161,7 +175,7 @@ async function submitOrder() {
                 <div class="flex justify-between text-sm px-1">
                   <span class="text-muted">Total</span>
                   <span class="font-medium">
-                    {{ ((cart.count.value * Number($config.public.photoPriceCents || 500)) / 100).toFixed(2) }} €
+                    {{ (cart.totalCents.value / 100).toFixed(2) }} €
                   </span>
                 </div>
                 <UButton
@@ -171,7 +185,7 @@ async function submitOrder() {
                   trailing-icon="i-lucide-arrow-right"
                   @click="view = 'checkout'"
                 >
-                  Commander {{ cart.count.value }} photo{{ cart.count.value > 1 ? 's' : '' }}
+                  Commander — {{ (cart.totalCents.value / 100).toFixed(2) }} €
                 </UButton>
               </div>
             </template>
@@ -191,7 +205,7 @@ async function submitOrder() {
                     </div>
                     <div class="flex justify-between font-medium">
                       <span>Total</span>
-                      <span>{{ ((cart.count.value * Number($config.public.photoPriceCents || 500)) / 100).toFixed(2) }} €</span>
+                      <span>{{ (cart.totalCents.value / 100).toFixed(2) }} €</span>
                     </div>
                   </div>
 

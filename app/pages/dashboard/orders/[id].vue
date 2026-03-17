@@ -67,7 +67,7 @@ async function updateStatus() {
         </NuxtLink>
 
         <!-- Header card -->
-        <div class="border border-default rounded-lg p-5 grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="border border-default rounded-lg p-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           <div>
             <p class="text-xs text-muted mb-1">
               Client
@@ -77,6 +77,14 @@ async function updateStatus() {
             </p>
             <p class="text-xs text-muted">
               {{ order.email }}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs text-muted mb-1">
+              Formule
+            </p>
+            <p class="text-sm font-medium">
+              {{ order.formulaName ?? '—' }}
             </p>
           </div>
           <div>

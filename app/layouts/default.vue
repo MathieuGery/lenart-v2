@@ -32,6 +32,13 @@ const links = [[{
   onSelect: () => {
     open.value = false
   }
+}, {
+  label: 'Tarifs',
+  icon: 'i-lucide-tag',
+  to: '/dashboard/pricing',
+  onSelect: () => {
+    open.value = false
+  }
 }]] satisfies NavigationMenuItem[][]
 </script>
 

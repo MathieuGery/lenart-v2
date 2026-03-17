@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, timestamp, integer, text, uniqueIndex, index, pgEnum } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, varchar, timestamp, integer, text, uniqueIndex, index, pgEnum, boolean } from 'drizzle-orm/pg-core'
 
 export const contactMessageStatusEnum = pgEnum('contact_message_status', ['new', 'read', 'archived'])
 export const orderStatusEnum = pgEnum('order_status', ['pending', 'paid', 'cancelled', 'expired', 'failed'])
@@ -38,6 +38,7 @@ export const orders = pgTable('orders', {
   firstName: varchar('first_name', { length: 255 }).notNull(),
   lastName: varchar('last_name', { length: 255 }).notNull(),
   molliePaymentId: varchar('mollie_payment_id', { length: 255 }),
+  formulaName: varchar('formula_name', { length: 255 }),
   status: orderStatusEnum('status').notNull().default('pending'),
   totalCents: integer('total_cents').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -61,5 +62,29 @@ export const orderItems = pgTable('order_items', {
   orderId: uuid('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
   photoId: uuid('photo_id').notNull().references(() => photos.id, { onDelete: 'restrict' }),
   priceCents: integer('price_cents').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+})
+
+export const pricingFormulas = pgTable('pricing_formulas', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  basePriceCents: integer('base_price_cents').notNull().default(0),
+  isFeatured: boolean('is_featured').notNull().default(false),
+  digitalPhotosCount: integer('digital_photos_count').notNull().default(0),
+  printDetails: varchar('print_details', { length: 255 }),
+  extraPhotoPriceCents: integer('extra_photo_price_cents'),
+  isTourComplete: boolean('is_tour_complete').notNull().default(false),
+  isActive: boolean('is_active').notNull().default(true),
+  displayOrder: integer('display_order').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+})
+
+export const pricingFormulaFeatures = pgTable('pricing_formula_features', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  formulaId: uuid('formula_id').notNull().references(() => pricingFormulas.id, { onDelete: 'cascade' }),
+  featureText: varchar('feature_text', { length: 500 }).notNull(),
+  displayOrder: integer('display_order').notNull().default(0),
   createdAt: timestamp('created_at').defaultNow().notNull()
 })
