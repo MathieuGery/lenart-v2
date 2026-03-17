@@ -1,12 +1,13 @@
 import { eq, isNotNull } from 'drizzle-orm'
-import { orders } from '~~/server/database/schema'
+import { orders, orderStatusEnum } from '~~/server/database/schema'
 import { db } from '~~/server/utils/db'
 
-// Correspondance statut Mollie → statut application
-const MOLLIE_TO_APP: Record<string, string> = {
-  open: 'pending',        // paiement créé, pas encore démarré
-  pending: 'pending',     // en attente (ex: virement bancaire)
-  authorized: 'pending',  // autorisé mais pas encore capturé
+type OrderStatus = typeof orderStatusEnum.enumValues[number]
+
+const MOLLIE_TO_STATUS: Record<string, OrderStatus> = {
+  open: 'pending',
+  pending: 'pending',
+  authorized: 'pending',
   paid: 'paid',
   canceled: 'cancelled',
   expired: 'expired',
@@ -14,14 +15,11 @@ const MOLLIE_TO_APP: Record<string, string> = {
 }
 
 export default defineEventHandler(async () => {
-  // Toutes les orders liées à un paiement Mollie, quel que soit le statut actuel
   const toSync = await db.select()
     .from(orders)
     .where(isNotNull(orders.molliePaymentId))
 
-  if (!toSync.length) {
-    return { synced: 0, updated: 0 }
-  }
+  if (!toSync.length) return { synced: 0, updated: 0 }
 
   const mollie = getMollie()
   let updated = 0
@@ -30,7 +28,7 @@ export default defineEventHandler(async () => {
   await Promise.all(toSync.map(async (order) => {
     try {
       const payment = await mollie.payments.get({ paymentId: order.molliePaymentId! })
-      const newStatus = MOLLIE_TO_APP[payment.status ?? '']
+      const newStatus = MOLLIE_TO_STATUS[payment.status ?? '']
 
       if (!newStatus || newStatus === order.status) return
 

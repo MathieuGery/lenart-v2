@@ -39,6 +39,14 @@ const createdCheckoutUrl = ref<string | null>(null)
 const { data: collections } = await useFetch('/api/collections')
 const expandedCollection = ref<string | null>(null)
 const collectionPhotos = ref<Record<string, { id: string, filename: string, url: string }[]>>({})
+const photoSearch = ref('')
+
+async function loadCollection(id: string) {
+  if (!collectionPhotos.value[id]) {
+    const data = await $fetch<{ photos: { id: string, filename: string, url: string }[] }>(`/api/collections/${id}`)
+    collectionPhotos.value[id] = data.photos
+  }
+}
 
 async function toggleCollection(id: string) {
   if (expandedCollection.value === id) {
@@ -46,11 +54,23 @@ async function toggleCollection(id: string) {
     return
   }
   expandedCollection.value = id
-  if (!collectionPhotos.value[id]) {
-    const data = await $fetch<{ photos: { id: string, filename: string, url: string }[] }>(`/api/collections/${id}`)
-    collectionPhotos.value[id] = data.photos
-  }
+  await loadCollection(id)
 }
+
+watch(photoSearch, async (val) => {
+  if (!val) return
+  await Promise.all((collections.value ?? []).map(col => loadCollection(col.id)))
+})
+
+const searchResults = computed(() => {
+  const q = photoSearch.value.trim().toLowerCase()
+  if (!q) return []
+  return (collections.value ?? []).flatMap(col =>
+    (collectionPhotos.value[col.id] ?? [])
+      .filter(p => p.filename.toLowerCase().includes(q))
+      .map(p => ({ ...p, collectionName: col.name }))
+  )
+})
 
 function togglePhoto(id: string) {
   const idx = selectedPhotoIds.value.indexOf(id)
@@ -69,6 +89,7 @@ function openModal() {
   form.terminalId = ''
   selectedPhotoIds.value = []
   expandedCollection.value = null
+  photoSearch.value = ''
   step.value = 'info'
   createdCheckoutUrl.value = null
   modalOpen.value = true
@@ -453,7 +474,54 @@ const filteredOrders = computed(() => {
             {{ selectedPhotoIds.length }} photo{{ selectedPhotoIds.length !== 1 ? 's' : '' }} sélectionnée{{ selectedPhotoIds.length !== 1 ? 's' : '' }}
             <span v-if="selectedPhotoIds.length > 0"> — {{ totalEuros }} €</span>
           </p>
-          <div class="space-y-2 max-h-96 overflow-y-auto pr-1">
+
+          <!-- Filename search -->
+          <UInput
+            v-model="photoSearch"
+            icon="i-lucide-search"
+            placeholder="Rechercher par nom de fichier…"
+            size="sm"
+            color="neutral"
+            class="w-full mb-3"
+            :trailing="photoSearch ? true : false"
+          >
+            <template v-if="photoSearch" #trailing>
+              <button type="button" class="text-muted hover:text-highlighted" @click="photoSearch = ''">
+                <UIcon name="i-lucide-x" class="size-3.5" />
+              </button>
+            </template>
+          </UInput>
+
+          <!-- Search results -->
+          <div v-if="photoSearch" class="max-h-96 overflow-y-auto pr-1">
+            <p v-if="searchResults.length === 0" class="text-center text-xs text-muted py-8">
+              Aucune photo ne correspond à « {{ photoSearch }} ».
+            </p>
+            <div v-else class="grid grid-cols-5 gap-1.5">
+              <button
+                v-for="photo in searchResults"
+                :key="photo.id"
+                type="button"
+                class="relative aspect-4/3 rounded overflow-hidden bg-muted/10 group"
+                :title="photo.filename"
+                @click="togglePhoto(photo.id)"
+              >
+                <img :src="photo.url" :alt="photo.filename" class="size-full object-cover">
+                <div
+                  v-if="selectedPhotoIds.includes(photo.id)"
+                  class="absolute inset-0 bg-primary/40 ring-2 ring-inset ring-primary rounded flex items-center justify-center"
+                >
+                  <UIcon name="i-lucide-check" class="size-4 text-white" />
+                </div>
+                <div class="absolute bottom-0 inset-x-0 bg-black/50 px-1 py-0.5 text-white text-[9px] leading-tight truncate opacity-0 group-active:opacity-100 transition-opacity">
+                  {{ photo.filename }}
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Normal collection list (when not searching) -->
+          <div v-else class="space-y-2 max-h-96 overflow-y-auto pr-1">
             <div
               v-for="col in collections"
               :key="col.id"

@@ -1,8 +1,10 @@
 import { eq } from 'drizzle-orm'
-import { orders } from '~~/server/database/schema'
+import { orders, orderStatusEnum } from '~~/server/database/schema'
 import { db } from '~~/server/utils/db'
 
-const MOLLIE_STATUS_MAP: Record<string, string> = {
+type OrderStatus = typeof orderStatusEnum.enumValues[number]
+
+const MOLLIE_TO_STATUS: Record<string, OrderStatus> = {
   paid: 'paid',
   canceled: 'cancelled',
   expired: 'expired',
@@ -13,23 +15,20 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event)
   const paymentId = body?.id as string | undefined
 
-  // Mollie sends form-encoded body, also handle that
-  if (!paymentId) {
-    return { ok: true }
-  }
+  if (!paymentId) return { ok: true }
 
   try {
     const mollie = getMollie()
     const payment = await mollie.payments.get({ paymentId })
 
-    const newStatus = MOLLIE_STATUS_MAP[payment.status ?? '']
+    const newStatus = MOLLIE_TO_STATUS[payment.status ?? '']
     if (!newStatus) return { ok: true }
 
     await db.update(orders)
       .set({ status: newStatus, updatedAt: new Date() })
       .where(eq(orders.molliePaymentId, paymentId))
   } catch {
-    // Log but don't throw — Mollie expects a 200 response
+    // Mollie attend toujours un 200
   }
 
   return { ok: true }

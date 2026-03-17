@@ -1,6 +1,7 @@
 import { pgTable, uuid, varchar, timestamp, integer, text, uniqueIndex, index, pgEnum } from 'drizzle-orm/pg-core'
 
 export const contactMessageStatusEnum = pgEnum('contact_message_status', ['new', 'read', 'archived'])
+export const orderStatusEnum = pgEnum('order_status', ['pending', 'paid', 'cancelled', 'expired', 'failed'])
 
 export const admins = pgTable('admins', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -37,7 +38,7 @@ export const orders = pgTable('orders', {
   firstName: varchar('first_name', { length: 255 }).notNull(),
   lastName: varchar('last_name', { length: 255 }).notNull(),
   molliePaymentId: varchar('mollie_payment_id', { length: 255 }),
-  status: varchar('status', { length: 50 }).notNull().default('pending'),
+  status: orderStatusEnum('status').notNull().default('pending'),
   totalCents: integer('total_cents').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull()

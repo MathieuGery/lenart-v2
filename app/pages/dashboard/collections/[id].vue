@@ -141,6 +141,27 @@ async function deletePhoto(photoId: string) {
   }
 }
 
+const purgeModalOpen = ref(false)
+const purging = ref(false)
+
+async function purgeUnlinked() {
+  purging.value = true
+  try {
+    const { deleted } = await $fetch<{ deleted: number }>(`/api/collections/${id}/purge`, { method: 'POST' })
+    await refresh()
+    purgeModalOpen.value = false
+    if (deleted === 0) {
+      toast.add({ title: 'Aucune photo à supprimer', color: 'neutral' })
+    } else {
+      toast.add({ title: `${deleted} photo${deleted !== 1 ? 's' : ''} supprimée${deleted !== 1 ? 's' : ''}`, color: 'success' })
+    }
+  } catch {
+    toast.add({ title: 'Erreur lors de la purge', color: 'error' })
+  } finally {
+    purging.value = false
+  }
+}
+
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} o`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`
@@ -189,6 +210,16 @@ function formatSpeed(bytesPerSec: number) {
             />
           </div>
 
+          <UButton
+            v-if="collection?.photos?.length"
+            icon="i-lucide-trash-2"
+            size="sm"
+            color="error"
+            variant="ghost"
+            @click="purgeModalOpen = true"
+          >
+            Purger
+          </UButton>
           <UButton
             icon="i-lucide-upload"
             size="sm"
@@ -446,6 +477,35 @@ function formatSpeed(bytesPerSec: number) {
       </div>
     </template>
   </UDashboardPanel>
+
+  <!-- Purge confirmation modal -->
+  <UModal v-model:open="purgeModalOpen" :ui="{ content: 'max-w-md' }">
+    <template #content>
+      <div class="p-6">
+        <div class="flex items-start gap-4 mb-6">
+          <div class="size-10 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
+            <UIcon name="i-lucide-trash-2" class="size-5 text-red-500" />
+          </div>
+          <div>
+            <h2 class="text-base font-medium mb-1">
+              Purger les photos non liées
+            </h2>
+            <p class="text-sm text-muted">
+              Toutes les photos de cette collection qui ne sont rattachées à aucune commande seront définitivement supprimées. Cette action est irréversible.
+            </p>
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 pt-4 border-t border-default">
+          <UButton color="neutral" variant="ghost" @click="purgeModalOpen = false">
+            Annuler
+          </UButton>
+          <UButton color="error" :loading="purging" icon="i-lucide-trash-2" @click="purgeUnlinked()">
+            Purger quand même
+          </UButton>
+        </div>
+      </div>
+    </template>
+  </UModal>
 </template>
 
 <style scoped>
