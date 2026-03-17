@@ -1,5 +1,3 @@
-import { useLocalStorage } from '@vueuse/core'
-
 export interface CartItem {
   id: string
   filename: string
@@ -19,10 +17,36 @@ export interface CartFormula {
   printDetails: string | null
 }
 
+const ITEMS_KEY = 'lenart-cart'
+const FORMULA_KEY = 'lenart-cart-formula'
+
+function readLocal<T>(key: string, fallback: T): T {
+  if (!import.meta.client) return fallback
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw || raw === 'null' || raw === 'undefined') return fallback
+    return JSON.parse(raw) as T
+  } catch {
+    return fallback
+  }
+}
+
+function writeLocal(key: string, value: unknown) {
+  if (!import.meta.client) return
+  if (value == null) {
+    localStorage.removeItem(key)
+  } else {
+    localStorage.setItem(key, JSON.stringify(value))
+  }
+}
+
 export const useCart = createSharedComposable(() => {
-  const items = useLocalStorage<CartItem[]>('lenart-cart', [])
-  const formula = useLocalStorage<CartFormula | null>('lenart-cart-formula', null)
+  const items = ref<CartItem[]>(readLocal<CartItem[]>(ITEMS_KEY, []))
+  const formula = ref<CartFormula | null>(readLocal<CartFormula | null>(FORMULA_KEY, null))
   const isOpen = ref(false)
+
+  watch(items, v => writeLocal(ITEMS_KEY, v), { deep: true })
+  watch(formula, v => writeLocal(FORMULA_KEY, v), { deep: true })
 
   const count = computed(() => items.value.length)
 

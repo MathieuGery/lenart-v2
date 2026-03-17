@@ -126,15 +126,59 @@ async function submitOrder() {
             <template v-if="view === 'cart'">
               <div class="flex-1 overflow-y-auto">
                 <!-- Formule sélectionnée -->
-                <div v-if="cart.formula.value" class="px-5 py-3 border-b border-default bg-primary/5">
-                  <div class="flex items-center justify-between">
-                    <div>
-                      <p class="text-xs font-medium">{{ cart.formula.value.name }}</p>
-                      <p v-if="cart.formula.value.printDetails" class="text-xs text-muted">
-                        + {{ cart.formula.value.printDetails }}
-                      </p>
+                <div v-if="cart.formula.value" class="border-b border-default bg-elevated/50">
+                  <div class="px-5 pt-4 pb-3">
+                    <div class="flex items-start justify-between gap-2 mb-2">
+                      <div>
+                        <p class="text-xs uppercase tracking-widest text-muted mb-1">
+                          Formule
+                        </p>
+                        <p class="text-sm font-medium leading-tight">
+                          {{ cart.formula.value.name }}
+                        </p>
+                        <p v-if="cart.formula.value.description" class="text-xs text-muted mt-0.5 leading-snug">
+                          {{ cart.formula.value.description }}
+                        </p>
+                      </div>
+                      <span class="text-sm font-semibold shrink-0">
+                        {{ (cart.formula.value.basePriceCents / 100).toFixed(2) }} €
+                      </span>
                     </div>
-                    <span class="text-sm font-semibold">{{ (cart.formula.value.basePriceCents / 100).toFixed(2) }} €</span>
+                    <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+                      <span class="flex items-center gap-1">
+                        <UIcon name="i-lucide-image" class="size-3" />
+                        {{ cart.formula.value.digitalPhotosCount }} photo{{ cart.formula.value.digitalPhotosCount > 1 ? 's' : '' }} incluse{{ cart.formula.value.digitalPhotosCount > 1 ? 's' : '' }}
+                      </span>
+                      <span
+                        v-if="cart.formula.value.extraPhotoPriceCents != null"
+                        class="flex items-center gap-1"
+                      >
+                        <UIcon name="i-lucide-plus" class="size-3" />
+                        {{ (cart.formula.value.extraPhotoPriceCents / 100).toFixed(2) }} €/photo supp.
+                      </span>
+                      <span v-if="cart.formula.value.printDetails" class="flex items-center gap-1">
+                        <UIcon name="i-lucide-printer" class="size-3" />
+                        {{ cart.formula.value.printDetails }}
+                      </span>
+                    </div>
+                    <!-- Progress bar: photos used vs included -->
+                    <div
+                      v-if="!cart.formula.value.isTourComplete"
+                      class="mt-3"
+                    >
+                      <div class="flex justify-between text-[10px] text-muted mb-1">
+                        <span>{{ cart.count.value }} / {{ cart.formula.value.digitalPhotosCount }} photos</span>
+                        <span v-if="cart.count.value > cart.formula.value.digitalPhotosCount" class="text-warning">
+                          +{{ cart.count.value - cart.formula.value.digitalPhotosCount }} supplémentaire{{ cart.count.value - cart.formula.value.digitalPhotosCount > 1 ? 's' : '' }}
+                        </span>
+                      </div>
+                      <div class="h-1 rounded-full bg-muted/20 overflow-hidden">
+                        <div
+                          class="h-full rounded-full bg-primary transition-all duration-300"
+                          :style="{ width: `${Math.min(100, (cart.count.value / cart.formula.value.digitalPhotosCount) * 100)}%` }"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
