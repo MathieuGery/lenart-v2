@@ -2,6 +2,7 @@ import { randomUUID, createHash } from 'node:crypto'
 import { eq, and } from 'drizzle-orm'
 import { collections, photos } from '~~/server/database/schema'
 import { db } from '~~/server/utils/db'
+import { applyWatermark } from '~~/server/utils/watermark'
 
 export default defineEventHandler(async (event) => {
   const collectionId = getRouterParam(event, 'id')!
@@ -44,7 +45,8 @@ export default defineEventHandler(async (event) => {
     const ext = file.filename?.split('.').pop() || 'jpg'
     const key = `collections/${collectionId}/${randomUUID()}.${ext}`
 
-    await blobPut(key, file.data, file.type!)
+    const watermarked = await applyWatermark(file.data)
+    await blobPut(key, watermarked, 'image/jpeg')
 
     const [photo] = await db.insert(photos)
       .values({
@@ -52,7 +54,7 @@ export default defineEventHandler(async (event) => {
         key,
         filename: file.filename || `photo.${ext}`,
         hash,
-        size: file.data.length
+        size: watermarked.length
       })
       .returning()
 

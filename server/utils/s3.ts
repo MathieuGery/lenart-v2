@@ -57,6 +57,19 @@ export async function blobDelete(key: string): Promise<void> {
   }))
 }
 
+export async function blobGet(key: string): Promise<Buffer | null> {
+  try {
+    const result = await s3.send(new GetObjectCommand({
+      Bucket: bucket,
+      Key: key
+    }))
+    const bytes = await result.Body?.transformToByteArray()
+    return bytes ? Buffer.from(bytes) : null
+  } catch {
+    return null
+  }
+}
+
 export async function blobPresignedUrl(key: string, expiresIn = 3600): Promise<string> {
   return getSignedUrl(s3, new GetObjectCommand({
     Bucket: bucket,
