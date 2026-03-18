@@ -120,6 +120,13 @@
       "when": 1773782818028,
       "tag": "0016_real_squadron_supreme",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1742310000000,
+      "tag": "0017_add_settings",
+      "breakpoints": true
     }
   ]
 }

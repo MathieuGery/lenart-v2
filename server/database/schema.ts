@@ -82,6 +82,12 @@ export const pricingFormulas = pgTable('pricing_formulas', {
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 })
 
+export const settings = pgTable('settings', {
+  key: varchar('key', { length: 255 }).primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+})
+
 export const pricingFormulaFeatures = pgTable('pricing_formula_features', {
   id: uuid('id').defaultRandom().primaryKey(),
   formulaId: uuid('formula_id').notNull().references(() => pricingFormulas.id, { onDelete: 'cascade' }),

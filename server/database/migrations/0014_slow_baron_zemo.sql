@@ -1,1 +1,2 @@
-ALTER TYPE "public"."order_status" ADD VALUE 'cash';
+-- squash artifact: 'cash' enum value already added by 0013
+SELECT 1;

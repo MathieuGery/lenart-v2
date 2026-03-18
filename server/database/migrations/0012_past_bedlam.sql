@@ -1,1 +1,2 @@
-ALTER TABLE "orders" ADD COLUMN "formula_name" varchar(255);
+-- squash artifact: formula_name already added by 0011
+SELECT 1;

@@ -1,4 +1,5 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+
 export default defineNuxtConfig({
   modules: [
     '@nuxt/eslint',
@@ -7,24 +8,11 @@ export default defineNuxtConfig({
     'nuxt-auth-utils',
     'nuxt-authorization'
   ],
-
   devtools: {
     enabled: true
   },
 
-  nitro: {
-    experimental: {
-      tasks: true
-    }
-  },
-
   css: ['~/assets/css/main.css'],
-
-  routeRules: {
-    '/api/**': {
-      cors: true
-    }
-  },
 
   runtimeConfig: {
     appUrl: process.env.APP_URL ?? 'http://localhost:3000',
@@ -32,8 +20,28 @@ export default defineNuxtConfig({
       photoPriceCents: process.env.PHOTO_PRICE_CENTS ?? '500'
     }
   },
+  routeRules: {
+    '/api/**': {
+      cors: true
+    }
+  },
 
   compatibilityDate: '2024-07-11',
+
+  nitro: {
+    experimental: {
+      tasks: true
+    }
+  },
+
+  vite: {
+    optimizeDeps: {
+      exclude: ['libraw-wasm']
+    },
+    worker: {
+      format: 'es'
+    }
+  },
 
   eslint: {
     config: {

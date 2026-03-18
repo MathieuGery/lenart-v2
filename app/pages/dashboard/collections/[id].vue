@@ -18,6 +18,11 @@ const { refresh: refreshLazy } = useLazyImages()
 watch(viewMode, () => refreshLazy())
 watch(() => collection.value?.photos?.length, () => refreshLazy())
 
+// JPEG quality (from server settings)
+const { data: appSettings } = await useFetch<Record<string, string>>('/api/settings')
+const jpegQuality = computed(() => Number(appSettings.value?.jpeg_quality ?? 95))
+const maxFileSizeKb = computed(() => Number(appSettings.value?.max_file_size_kb ?? 500))
+
 // Upload state
 interface UploadItem {
   id: string
@@ -25,11 +30,11 @@ interface UploadItem {
   size: number
   progress: number
   speed: number
-  status: 'pending' | 'uploading' | 'done' | 'duplicate' | 'error'
+  status: 'pending' | 'converting' | 'uploading' | 'done' | 'duplicate' | 'error'
 }
 
 const uploadQueue = ref<UploadItem[]>([])
-const isUploading = computed(() => uploadQueue.value.some((u: UploadItem) => u.status === 'uploading' || u.status === 'pending'))
+const isUploading = computed(() => uploadQueue.value.some((u: UploadItem) => ['pending', 'converting', 'uploading'].includes(u.status)))
 const doneCount = computed(() => uploadQueue.value.filter((u: UploadItem) => u.status === 'done').length)
 
 function uploadFileXHR(file: File, item: UploadItem): Promise<void> {
@@ -83,6 +88,27 @@ function uploadFileXHR(file: File, item: UploadItem): Promise<void> {
   })
 }
 
+const CONCURRENCY = 5
+
+async function processAndUpload(file: File, item: UploadItem) {
+  try {
+    item.status = 'converting'
+    item.progress = 0
+    const processed = await processImageFile(file, jpegQuality.value, maxFileSizeKb.value, (pct) => {
+      item.progress = pct
+    })
+    item.name = processed.name
+    item.size = processed.size
+    item.progress = 0
+    await uploadFileXHR(processed, item)
+  } catch (e) {
+    if (item.status !== 'error') item.status = 'error'
+    if (e instanceof Error && !e.message.startsWith('HTTP') && !e.message.startsWith('Network')) {
+      toast.add({ title: e.message, color: 'error' })
+    }
+  }
+}
+
 async function uploadFiles(files: FileList | File[]) {
   if (!files.length) return
 
@@ -101,20 +127,22 @@ async function uploadFiles(files: FileList | File[]) {
     items.push({ file, item })
   }
 
-  for (const { file, item } of items) {
-    try {
-      await uploadFileXHR(file, item)
-    } catch {
-      // status already set to 'error' in XHR handler
+  // Pool de workers : 5 conversions/uploads en parallèle
+  let cursor = 0
+  async function worker() {
+    while (cursor < items.length) {
+      const idx = cursor++
+      await processAndUpload(items[idx].file, items[idx].item)
     }
   }
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, items.length) }, () => worker()))
 
   await refresh()
   refreshLazy()
 }
 
 function clearFinished() {
-  uploadQueue.value = uploadQueue.value.filter((u: UploadItem) => u.status === 'pending' || u.status === 'uploading')
+  uploadQueue.value = uploadQueue.value.filter((u: UploadItem) => ['pending', 'converting', 'uploading'].includes(u.status))
 }
 
 function onFileSelect(e: Event) {
@@ -233,7 +261,7 @@ function formatSpeed(bytesPerSec: number) {
             ref="fileInput"
             type="file"
             multiple
-            accept="image/*"
+            accept="image/*,.cr2,.cr3,.CR2,.CR3"
             class="hidden"
             @change="onFileSelect"
           >
@@ -283,7 +311,7 @@ function formatSpeed(bytesPerSec: number) {
                   class="size-4 text-red-500"
                 />
                 <div
-                  v-else-if="item.status === 'uploading'"
+                  v-else-if="item.status === 'uploading' || item.status === 'converting'"
                   class="size-4 border-2 border-primary border-t-transparent rounded-full animate-spin"
                 />
                 <UIcon
@@ -316,21 +344,28 @@ function formatSpeed(bytesPerSec: number) {
                   </div>
                 </div>
 
-                <!-- Progress bar -->
+                <!-- Progress bar (conversion + upload) -->
                 <div
-                  v-if="item.status === 'uploading' || item.status === 'pending'"
+                  v-if="item.status === 'converting' || item.status === 'uploading'"
                   class="mt-1.5 h-1 bg-elevated rounded-full overflow-hidden"
                 >
                   <div
-                    class="h-full bg-primary rounded-full transition-all duration-200"
+                    class="h-full rounded-full transition-all duration-200"
+                    :class="item.status === 'converting' ? 'bg-amber-500' : 'bg-primary'"
                     :style="{ width: `${item.progress}%` }"
                   />
                 </div>
+                <p
+                  v-if="item.status === 'converting'"
+                  class="mt-0.5 text-[11px] text-amber-500"
+                >
+                  Conversion &amp; compression…
+                </p>
               </div>
 
               <!-- Progress % -->
               <span
-                v-if="item.status === 'uploading'"
+                v-if="item.status === 'converting' || item.status === 'uploading'"
                 class="text-[11px] text-muted tabular-nums shrink-0 w-8 text-right"
               >
                 {{ item.progress }}%
