@@ -15,7 +15,7 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
 
   runtimeConfig: {
-    appUrl: process.env.APP_URL ?? 'http://localhost:3000',
+    appUrl: process.env.NUXT_APP_URL ?? 'http://localhost:3000',
     public: {
       photoPriceCents: process.env.PHOTO_PRICE_CENTS ?? '500'
     }

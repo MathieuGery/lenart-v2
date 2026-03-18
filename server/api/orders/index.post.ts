@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
   const body = await readValidatedBody(event, bodySchema.parse)
 
   const priceCents = Number(process.env.PHOTO_PRICE_CENTS ?? 500)
-  const appUrl = process.env.APP_URL ?? 'http://localhost:3000'
+  const appUrl = process.env.NUXT_APP_URL ?? 'http://localhost:3000'
 
   // Validate photos
   const foundPhotos = await db
