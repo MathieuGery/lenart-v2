@@ -37,7 +37,7 @@ async function submit() {
           Contact
         </h1>
         <p class="mt-3 text-sm text-muted max-w-md">
-          Une question sur une photo, une commande ou une collaboration ? Écrivez-nous, nous vous répondrons dans les meilleurs délais.
+          Une question sur une photo, une commande ou un projet ? Écrivez moi, je vous répondrai dans les meilleurs délais.
         </p>
       </div>
 
@@ -73,7 +73,7 @@ async function submit() {
             <UInput
               v-model="form.name"
               required
-              placeholder="Marie Dupont"
+              placeholder="Jean Dupont"
               color="neutral"
               size="md"
               class="w-full"
@@ -85,7 +85,7 @@ async function submit() {
               v-model="form.email"
               required
               type="email"
-              placeholder="marie@example.com"
+              placeholder="jean@example.com"
               color="neutral"
               size="md"
               class="w-full"
