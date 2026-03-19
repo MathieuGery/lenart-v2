@@ -25,21 +25,32 @@ const links = [[{
   onSelect: () => {
     open.value = false
   }
-}, {
-  label: 'Messages',
-  icon: 'i-lucide-inbox',
-  to: '/dashboard/contact',
+},
+{
+  label: 'Codes promo',
+  icon: 'i-lucide-ticket-percent',
+  to: '/dashboard/promo-codes',
   onSelect: () => {
     open.value = false
   }
-}, {
+},
+{
   label: 'Tarifs',
   icon: 'i-lucide-tag',
   to: '/dashboard/pricing',
   onSelect: () => {
     open.value = false
   }
-}, {
+},
+{
+  label: 'Messages',
+  icon: 'i-lucide-inbox',
+  to: '/dashboard/contact',
+  onSelect: () => {
+    open.value = false
+  }
+},
+{
   label: 'Paramètres',
   icon: 'i-lucide-settings',
   to: '/dashboard/settings',

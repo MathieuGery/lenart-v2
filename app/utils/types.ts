@@ -108,6 +108,8 @@ export interface OrderDetail {
   postalCode: string | null
   country: string | null
   amazonLink: string | null
+  promoCode: string | null
+  discountCents: number
   status: string
   cashPayment: boolean
   totalCents: number
@@ -128,6 +130,20 @@ export interface OrderListItem {
   totalCents: number
   createdAt: string
   photoCount: number
+}
+
+export interface PromoCode {
+  id: string
+  code: string
+  type: 'percentage' | 'fixed'
+  value: number
+  maxUsage: number
+  usageCount: number
+  isActive: boolean
+  formulaId: string | null
+  formulaName: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 export interface PricingFormula {

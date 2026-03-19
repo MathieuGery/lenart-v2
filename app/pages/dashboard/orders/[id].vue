@@ -251,6 +251,9 @@ async function saveEdit() {
             <div>
               <p class="text-xs text-muted mb-1">Total</p>
               <p class="text-sm font-medium">{{ (order.totalCents / 100).toFixed(2) }} €</p>
+              <p v-if="order.discountCents > 0" class="text-xs text-green-600 dark:text-green-400">
+                -{{ (order.discountCents / 100).toFixed(2) }} € ({{ order.promoCode }})
+              </p>
             </div>
             <div>
               <p class="text-xs text-muted mb-1">Paiement</p>

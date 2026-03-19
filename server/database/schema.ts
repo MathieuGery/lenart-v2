@@ -2,6 +2,7 @@ import { pgTable, uuid, varchar, timestamp, integer, text, uniqueIndex, index, p
 
 export const contactMessageStatusEnum = pgEnum('contact_message_status', ['new', 'read', 'archived'])
 export const orderStatusEnum = pgEnum('order_status', ['pending', 'paid', 'cancelled', 'expired', 'failed'])
+export const promoCodeTypeEnum = pgEnum('promo_code_type', ['percentage', 'fixed'])
 
 export const admins = pgTable('admins', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -44,6 +45,8 @@ export const orders = pgTable('orders', {
   postalCode: varchar('postal_code', { length: 20 }),
   country: varchar('country', { length: 255 }),
   amazonLink: varchar('amazon_link', { length: 1000 }),
+  promoCode: varchar('promo_code', { length: 50 }),
+  discountCents: integer('discount_cents').notNull().default(0),
   cashPayment: boolean('cash_payment').notNull().default(false),
   status: orderStatusEnum('status').notNull().default('pending'),
   totalCents: integer('total_cents').notNull(),
@@ -91,6 +94,19 @@ export const pricingFormulas = pgTable('pricing_formulas', {
 export const settings = pgTable('settings', {
   key: varchar('key', { length: 255 }).primaryKey(),
   value: text('value').notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+})
+
+export const promoCodes = pgTable('promo_codes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  code: varchar('code', { length: 50 }).notNull().unique(),
+  type: promoCodeTypeEnum('type').notNull(),
+  value: integer('value').notNull(),
+  maxUsage: integer('max_usage').notNull(),
+  usageCount: integer('usage_count').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+  formulaId: uuid('formula_id').references(() => pricingFormulas.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 })
 

@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import { eq, inArray } from 'drizzle-orm'
-import { photos, orders, orderItems, pricingFormulas } from '~~/server/database/schema'
+import { eq, sql, inArray } from 'drizzle-orm'
+import { photos, orders, orderItems, pricingFormulas, promoCodes } from '~~/server/database/schema'
 import { db } from '~~/server/utils/db'
 import { getPhotoPriceCents } from '~~/server/utils/settings'
 
@@ -11,14 +11,12 @@ const bodySchema = z.object({
   photoIds: z.array(z.string().uuid()).min(1).max(500),
   formulaId: z.string().uuid().optional(),
   paymentMethod: z.enum(['online', 'cash']).default('online'),
-  address: z.string().min(1).max(500).optional(),
-  city: z.string().min(1).max(255).optional(),
-  postalCode: z.string().min(1).max(20).optional(),
-  country: z.string().min(1).max(255).optional()
-}).refine(
-  data => data.paymentMethod !== 'online' || (data.address && data.city && data.postalCode && data.country),
-  { message: 'L\'adresse postale est requise pour un paiement en ligne' }
-)
+  promoCode: z.string().max(50).optional(),
+  address: z.string().max(500).optional(),
+  city: z.string().max(255).optional(),
+  postalCode: z.string().max(20).optional(),
+  country: z.string().max(255).optional()
+})
 
 export default defineEventHandler(async (event) => {
   const body = await readValidatedBody(event, bodySchema.parse)
@@ -60,9 +58,47 @@ export default defineEventHandler(async (event) => {
     totalCents = body.photoIds.length * priceCentsPerItem
   }
 
-  if (totalCents <= 0) {
+  // Apply promo code
+  let discountCents = 0
+  let appliedPromoCode: string | undefined
+
+  if (body.promoCode) {
+    const code = body.promoCode.toUpperCase()
+    const [promo] = await db.select().from(promoCodes)
+      .where(eq(promoCodes.code, code)).limit(1)
+
+    if (!promo || !promo.isActive || promo.usageCount >= promo.maxUsage) {
+      throw createError({ statusCode: 400, message: 'Code promo invalide ou expiré' })
+    }
+
+    if (promo.formulaId && promo.formulaId !== body.formulaId) {
+      throw createError({ statusCode: 400, message: 'Ce code promo n\'est pas valable pour cette formule' })
+    }
+
+    if (promo.type === 'percentage') {
+      discountCents = Math.round(totalCents * promo.value / 100)
+    } else {
+      discountCents = Math.min(promo.value, totalCents)
+    }
+
+    totalCents = totalCents - discountCents
+    appliedPromoCode = code
+
+    await db.update(promoCodes)
+      .set({ usageCount: sql`${promoCodes.usageCount} + 1`, updatedAt: new Date() })
+      .where(eq(promoCodes.id, promo.id))
+  }
+
+  // Prevent negative total (security: server-side recalculation of discount)
+  if (totalCents < 0) totalCents = 0
+
+  // Only block 0€ orders without a promo code (no free orders without justification)
+  if (totalCents === 0 && !appliedPromoCode) {
     throw createError({ statusCode: 400, message: 'Le montant doit être supérieur à 0' })
   }
+
+  // Free order (100% promo) — mark as paid immediately, no payment needed
+  const isFreeOrder = totalCents === 0
 
   const result = await db.insert(orders).values({
     email: body.email,
@@ -72,10 +108,12 @@ export default defineEventHandler(async (event) => {
     city: body.city,
     postalCode: body.postalCode,
     country: body.country,
+    promoCode: appliedPromoCode,
+    discountCents,
     totalCents,
     formulaName,
     cashPayment: body.paymentMethod === 'cash',
-    status: 'pending'
+    status: isFreeOrder ? 'paid' : 'pending'
   }).returning()
 
   const order = result[0]
@@ -85,9 +123,19 @@ export default defineEventHandler(async (event) => {
     body.photoIds.map(photoId => ({ orderId: order.id, photoId, priceCents: priceCentsPerItem }))
   )
 
+  // Free order — no payment required
+  if (isFreeOrder) {
+    return { checkoutUrl: null, orderId: order.id, free: true }
+  }
+
   // Cash payment — no Mollie
   if (body.paymentMethod === 'cash') {
-    return { checkoutUrl: null, orderId: order.id }
+    return { checkoutUrl: null, orderId: order.id, free: false }
+  }
+
+  // Online payment requires address
+  if (body.paymentMethod === 'online' && (!body.address || !body.city || !body.postalCode || !body.country)) {
+    throw createError({ statusCode: 400, message: 'L\'adresse postale est requise pour un paiement en ligne' })
   }
 
   const mollie = getMollie()
@@ -108,5 +156,5 @@ export default defineEventHandler(async (event) => {
 
   await db.update(orders).set({ molliePaymentId: payment.id }).where(eq(orders.id, order.id))
 
-  return { checkoutUrl, orderId: order.id }
+  return { checkoutUrl, orderId: order.id, free: false }
 })

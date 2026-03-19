@@ -17,12 +17,60 @@ const form = reactive({
 const loading = ref(false)
 const error = ref<string | null>(null)
 const confirmedOrderId = ref<string | null>(null)
+const confirmedFree = ref(false)
+
+// Promo code
+const promoInput = ref('')
+const promoLoading = ref(false)
+const promoError = ref<string | null>(null)
+const appliedPromo = ref<{ code: string, type: 'percentage' | 'fixed', value: number } | null>(null)
+
+const discountCents = computed(() => {
+  if (!appliedPromo.value) return 0
+  const total = cart.totalCents.value
+  if (appliedPromo.value.type === 'percentage') {
+    return Math.round(total * appliedPromo.value.value / 100)
+  }
+  return Math.min(appliedPromo.value.value, total)
+})
+
+const finalTotalCents = computed(() => Math.max(0, cart.totalCents.value - discountCents.value))
+
+async function validatePromo() {
+  promoError.value = null
+  const code = promoInput.value.trim()
+  if (!code) return
+  promoLoading.value = true
+  try {
+    const result = await $fetch<{ valid: boolean, message?: string, code?: string, type?: string, value?: number }>('/api/public/promo-code/validate', {
+      method: 'POST',
+      body: { code, formulaId: cart.formula.value?.id }
+    })
+    if (result.valid) {
+      appliedPromo.value = { code: result.code!, type: result.type as 'percentage' | 'fixed', value: result.value! }
+    } else {
+      promoError.value = result.message ?? 'Code invalide'
+    }
+  } catch {
+    promoError.value = 'Erreur de validation'
+  } finally {
+    promoLoading.value = false
+  }
+}
+
+function removePromo() {
+  appliedPromo.value = null
+  promoInput.value = ''
+  promoError.value = null
+}
 
 watch(() => cart.isOpen.value, (open) => {
   if (!open) {
     view.value = 'cart'
     error.value = null
     confirmedOrderId.value = null
+    confirmedFree.value = false
+    removePromo()
   }
 })
 
@@ -30,7 +78,7 @@ async function submitOrder() {
   error.value = null
   loading.value = true
   try {
-    const result = await $fetch<{ checkoutUrl: string | null, orderId: string }>('/api/public/checkout', {
+    const result = await $fetch<{ checkoutUrl: string | null, orderId: string, free: boolean }>('/api/public/checkout', {
       method: 'POST',
       body: {
         firstName: form.firstName,
@@ -39,6 +87,7 @@ async function submitOrder() {
         photoIds: cart.items.value.map(i => i.id),
         formulaId: cart.formula.value?.id,
         paymentMethod: form.paymentMethod,
+        promoCode: appliedPromo.value?.code,
         ...(form.paymentMethod === 'online' ? {
           address: form.address,
           city: form.city,
@@ -48,7 +97,12 @@ async function submitOrder() {
       }
     })
 
-    if (form.paymentMethod === 'cash') {
+    if (result.free) {
+      confirmedOrderId.value = result.orderId
+      confirmedFree.value = true
+      cart.clearCart()
+      view.value = 'success'
+    } else if (form.paymentMethod === 'cash') {
       confirmedOrderId.value = result.orderId
       cart.clearCart()
       view.value = 'success'
@@ -267,10 +321,48 @@ async function submitOrder() {
                       <span class="text-muted">Photos sélectionnées</span>
                       <span>{{ cart.count.value }}</span>
                     </div>
+                    <div v-if="appliedPromo" class="flex justify-between text-green-600 dark:text-green-400">
+                      <span>Réduction ({{ appliedPromo.type === 'percentage' ? `${appliedPromo.value}%` : `${(appliedPromo.value / 100).toFixed(2)} €` }})</span>
+                      <span>-{{ (discountCents / 100).toFixed(2) }} €</span>
+                    </div>
                     <div class="flex justify-between font-medium">
                       <span>Total</span>
-                      <span>{{ (cart.totalCents.value / 100).toFixed(2) }} €</span>
+                      <span>{{ (finalTotalCents / 100).toFixed(2) }} €</span>
                     </div>
+                  </div>
+
+                  <!-- Promo code -->
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-medium">Code promo</label>
+                    <template v-if="appliedPromo">
+                      <div class="flex items-center gap-2 px-3 py-2 rounded-md border border-green-500/30 bg-green-500/5 text-sm">
+                        <UIcon name="i-lucide-ticket-percent" class="size-3.5 text-green-600 dark:text-green-400 shrink-0" />
+                        <span class="flex-1 font-mono text-xs font-medium">{{ appliedPromo.code }}</span>
+                        <button type="button" class="text-muted hover:text-highlighted shrink-0" @click="removePromo">
+                          <UIcon name="i-lucide-x" class="size-3.5" />
+                        </button>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <div class="flex gap-2">
+                        <input
+                          v-model="promoInput"
+                          type="text"
+                          placeholder="PROMO2025"
+                          class="flex-1 rounded-md border border-default bg-default px-3 py-2 text-sm uppercase outline-none focus:ring-2 focus:ring-primary/50"
+                          @keydown.enter.prevent="validatePromo"
+                        >
+                        <button
+                          type="button"
+                          class="px-3 py-2 rounded-md border border-default text-xs font-medium hover:bg-elevated/40 transition-colors"
+                          :disabled="!promoInput.trim() || promoLoading"
+                          @click="validatePromo"
+                        >
+                          {{ promoLoading ? '…' : 'Appliquer' }}
+                        </button>
+                      </div>
+                      <p v-if="promoError" class="text-xs text-red-500">{{ promoError }}</p>
+                    </template>
                   </div>
 
                   <div class="grid grid-cols-2 gap-3">
@@ -307,8 +399,8 @@ async function submitOrder() {
                     >
                   </div>
 
-                  <!-- Address fields (online only) -->
-                  <template v-if="form.paymentMethod === 'online'">
+                  <!-- Address fields (online only, not for free orders) -->
+                  <template v-if="form.paymentMethod === 'online' && finalTotalCents > 0">
                     <div class="space-y-1.5">
                       <label class="text-xs font-medium">Adresse</label>
                       <input
@@ -357,33 +449,39 @@ async function submitOrder() {
                     </div>
                   </template>
 
-                  <!-- Payment method -->
-                  <div class="space-y-2">
-                    <p class="text-xs font-medium">
-                      Mode de paiement
-                    </p>
-                    <div class="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        class="flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border-2 transition-colors text-sm"
-                        :class="form.paymentMethod === 'online' ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
-                        @click="form.paymentMethod = 'online'"
-                      >
-                        <UIcon name="i-lucide-credit-card" class="size-4" />
-                        <span class="font-medium text-xs">En ligne</span>
-                        <span class="text-[10px] text-muted text-center leading-tight">Paiement sécurisé Mollie</span>
-                      </button>
-                      <button
-                        type="button"
-                        class="flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border-2 transition-colors text-sm"
-                        :class="form.paymentMethod === 'cash' ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
-                        @click="form.paymentMethod = 'cash'"
-                      >
-                        <UIcon name="i-lucide-banknote" class="size-4" />
-                        <span class="font-medium text-xs">Espèces</span>
-                        <span class="text-[10px] text-muted text-center leading-tight">Paiement au stand</span>
-                      </button>
+                  <!-- Payment method (hidden for free orders) -->
+                  <template v-if="finalTotalCents > 0">
+                    <div class="space-y-2">
+                      <p class="text-xs font-medium">
+                        Mode de paiement
+                      </p>
+                      <div class="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          class="flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border-2 transition-colors text-sm"
+                          :class="form.paymentMethod === 'online' ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
+                          @click="form.paymentMethod = 'online'"
+                        >
+                          <UIcon name="i-lucide-credit-card" class="size-4" />
+                          <span class="font-medium text-xs">En ligne</span>
+                          <span class="text-[10px] text-muted text-center leading-tight">Paiement sécurisé Mollie</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border-2 transition-colors text-sm"
+                          :class="form.paymentMethod === 'cash' ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
+                          @click="form.paymentMethod = 'cash'"
+                        >
+                          <UIcon name="i-lucide-banknote" class="size-4" />
+                          <span class="font-medium text-xs">Espèces</span>
+                          <span class="text-[10px] text-muted text-center leading-tight">Paiement au stand</span>
+                        </button>
+                      </div>
                     </div>
+                  </template>
+                  <div v-else class="rounded-lg bg-green-500/5 border border-green-500/20 px-4 py-3 text-sm text-center">
+                    <UIcon name="i-lucide-gift" class="size-4 text-green-600 dark:text-green-400 inline mr-1" />
+                    Commande offerte — aucun paiement requis
                   </div>
 
                   <p
@@ -401,11 +499,14 @@ async function submitOrder() {
                     color="neutral"
                     size="md"
                     :loading="loading"
-                    :trailing-icon="form.paymentMethod === 'cash' ? 'i-lucide-check' : 'i-lucide-credit-card'"
+                    :trailing-icon="finalTotalCents === 0 ? 'i-lucide-check' : form.paymentMethod === 'cash' ? 'i-lucide-check' : 'i-lucide-credit-card'"
                   >
-                    {{ form.paymentMethod === 'cash' ? 'Confirmer la réservation' : 'Payer via Mollie' }}
+                    {{ finalTotalCents === 0 ? 'Confirmer la commande' : form.paymentMethod === 'cash' ? 'Confirmer la réservation' : `Payer ${(finalTotalCents / 100).toFixed(2)} € via Mollie` }}
                   </UButton>
-                  <p v-if="form.paymentMethod === 'online'" class="text-center text-xs text-muted/60 mt-2">
+                  <p v-if="finalTotalCents === 0" class="text-center text-xs text-muted/60 mt-2">
+                    Offert grâce à votre code promo
+                  </p>
+                  <p v-else-if="form.paymentMethod === 'online'" class="text-center text-xs text-muted/60 mt-2">
                     Paiement sécurisé
                   </p>
                   <p v-else class="text-center text-xs text-muted/60 mt-2">
@@ -415,19 +516,19 @@ async function submitOrder() {
               </form>
             </template>
 
-            <!-- Success view (cash) -->
+            <!-- Success view (cash / free) -->
             <template v-else>
               <div class="flex-1 flex flex-col items-center justify-center px-6 py-10 text-center">
                 <div class="size-14 rounded-full bg-green-500/15 flex items-center justify-center mb-4">
-                  <UIcon name="i-lucide-check" class="size-7 text-green-600 dark:text-green-400" />
+                  <UIcon :name="confirmedFree ? 'i-lucide-gift' : 'i-lucide-check'" class="size-7 text-green-600 dark:text-green-400" />
                 </div>
                 <h3 class="text-base font-medium mb-1">
-                  Réservation confirmée !
+                  {{ confirmedFree ? 'Commande confirmée !' : 'Réservation confirmée !' }}
                 </h3>
                 <p class="text-sm text-muted mb-1">
-                  Vos photos ont été réservées.
+                  {{ confirmedFree ? 'Votre commande est validée, aucun paiement requis.' : 'Vos photos ont été réservées.' }}
                 </p>
-                <p class="text-sm text-muted">
+                <p v-if="!confirmedFree" class="text-sm text-muted">
                   Rendez-vous au stand pour régler en espèces et récupérer vos photos.
                 </p>
                 <p v-if="confirmedOrderId" class="mt-4 text-xs text-muted/60 font-mono">
