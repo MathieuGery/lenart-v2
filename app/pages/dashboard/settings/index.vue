@@ -5,6 +5,7 @@ const { data: settings, refresh } = await useFetch<Record<string, string>>('/api
 
 const jpegQuality = ref(Number(settings.value?.jpeg_quality ?? 95))
 const maxFileSize = ref(Number(settings.value?.max_file_size_kb ?? 500))
+const photoPriceCents = ref(Number(settings.value?.photo_price_cents ?? 500))
 const watermarkSize = ref(Number(settings.value?.watermark_size ?? 15))
 const watermarkSpacing = ref(Number(settings.value?.watermark_spacing ?? 60))
 const watermarkOpacity = ref(Number(settings.value?.watermark_opacity ?? 40))
@@ -57,6 +58,7 @@ async function save() {
       body: {
         jpeg_quality: String(jpegQuality.value),
         max_file_size_kb: String(maxFileSize.value),
+        photo_price_cents: String(photoPriceCents.value),
         watermark_size: String(watermarkSize.value),
         watermark_spacing: String(watermarkSpacing.value),
         watermark_opacity: String(watermarkOpacity.value)
@@ -84,6 +86,36 @@ async function save() {
 
     <template #body>
       <div class="max-w-xl mx-auto p-6 space-y-8">
+        <!-- Tarification -->
+        <div class="space-y-4">
+          <div>
+            <h2 class="text-sm font-medium">
+              Tarification
+            </h2>
+            <p class="text-xs text-muted mt-1">
+              Prix par défaut appliqué aux commandes sans formule.
+            </p>
+          </div>
+
+          <div class="border border-default rounded-lg p-4 space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="text-sm">Prix par photo</label>
+              <span class="text-sm font-medium tabular-nums">{{ (photoPriceCents / 100).toFixed(2) }} €</span>
+            </div>
+            <input
+              v-model.number="photoPriceCents"
+              type="range"
+              min="50"
+              max="5000"
+              step="50"
+              class="w-full h-1.5 accent-stone-600 cursor-pointer"
+            >
+            <p class="text-xs text-muted">
+              Prix unitaire par photo en centimes. Utilisé quand aucune formule n'est sélectionnée.
+            </p>
+          </div>
+        </div>
+
         <!-- Upload -->
         <div class="space-y-4">
           <div>

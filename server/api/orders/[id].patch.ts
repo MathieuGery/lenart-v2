@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { eq, and, isNull } from 'drizzle-orm'
 import { orders, orderItems, photos, pricingFormulas } from '~~/server/database/schema'
 import { db } from '~~/server/utils/db'
+import { getPhotoPriceCents } from '~~/server/utils/settings'
 
 const VALID_STATUSES = ['pending', 'paid', 'cancelled', 'expired', 'failed'] as const
 
@@ -55,13 +56,13 @@ export default defineEventHandler(async (event) => {
         formulaName = formula.name
       } else {
         // No formula
-        priceCentsPerItem = Number(process.env.PHOTO_PRICE_CENTS ?? 500)
+        priceCentsPerItem = await getPhotoPriceCents()
         totalCents = filenames.length * priceCentsPerItem
         formulaName = null
       }
     } else {
       // Keep existing formula pricing logic — recalculate with new count
-      priceCentsPerItem = Number(process.env.PHOTO_PRICE_CENTS ?? 500)
+      priceCentsPerItem = await getPhotoPriceCents()
       totalCents = filenames.length * priceCentsPerItem
     }
 

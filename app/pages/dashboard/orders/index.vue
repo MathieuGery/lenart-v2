@@ -93,6 +93,9 @@ function openModal() {
   modalOpen.value = true
 }
 
+// Settings (photo price)
+const { data: appSettings } = await useFetch<Record<string, string>>('/api/settings')
+
 const totalEuros = computed(() => {
   const count = photoFilenames.value.length
   if (count === 0) return '0.00'
@@ -104,7 +107,7 @@ const totalEuros = computed(() => {
       return ((f.basePriceCents + extraCost) / 100).toFixed(2)
     }
   }
-  const priceCents = Number(useRuntimeConfig().public.photoPriceCents ?? 500)
+  const priceCents = Number(appSettings.value?.photo_price_cents ?? 500)
   return ((count * priceCents) / 100).toFixed(2)
 })
 

@@ -58,6 +58,9 @@ const editForm = reactive({
 const editFilenames = ref<string[]>([])
 const editFilenameInput = ref('')
 
+// Settings (photo price)
+const { data: appSettings } = await useFetch<Record<string, string>>('/api/settings')
+
 // Formulas
 const { data: formulas } = await useFetch<{ id: string, name: string, basePriceCents: number, digitalPhotosCount: number, extraPhotoPriceCents: number | null, isTourComplete: boolean }[]>('/api/public/pricing')
 
@@ -93,7 +96,7 @@ const editTotalEuros = computed(() => {
       return ((f.basePriceCents + extraCost) / 100).toFixed(2)
     }
   }
-  const priceCents = Number(useRuntimeConfig().public.photoPriceCents ?? 500)
+  const priceCents = Number(appSettings.value?.photo_price_cents ?? 500)
   return ((count * priceCents) / 100).toFixed(2)
 })
 

@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { eq, inArray } from 'drizzle-orm'
 import { photos, orders, orderItems, pricingFormulas } from '~~/server/database/schema'
 import { db } from '~~/server/utils/db'
+import { getPhotoPriceCents } from '~~/server/utils/settings'
 
 const bodySchema = z.object({
   firstName: z.string().min(1).max(255),
@@ -62,7 +63,7 @@ export default defineEventHandler(async (event) => {
     priceCentsPerItem = totalItems > 0 ? Math.round(totalCents / totalItems) : 0
     formulaName = formula.name
   } else {
-    priceCentsPerItem = Number(process.env.PHOTO_PRICE_CENTS ?? 500)
+    priceCentsPerItem = await getPhotoPriceCents()
     totalCents = totalItems * priceCentsPerItem
   }
 

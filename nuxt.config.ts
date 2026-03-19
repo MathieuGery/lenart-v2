@@ -15,10 +15,7 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
 
   runtimeConfig: {
-    appUrl: process.env.NUXT_APP_URL ?? 'https://v2.len-art.fr',
-    public: {
-      photoPriceCents: process.env.PHOTO_PRICE_CENTS ?? '500'
-    }
+    appUrl: process.env.NUXT_APP_URL ?? 'https://v2.len-art.fr'
   },
   routeRules: {
     '/api/**': {
