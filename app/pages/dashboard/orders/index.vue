@@ -89,6 +89,7 @@ function openModal() {
   photoFilenames.value = []
   filenameInput.value = ''
   step.value = 'info'
+  emailTouched.value = false
   createdCheckoutUrl.value = null
   modalOpen.value = true
 }
@@ -147,8 +148,11 @@ function copyToClipboard(text: string) {
   navigator.clipboard.writeText(text)
 }
 
+const emailValid = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+const emailTouched = ref(false)
+
 function canAdvance(s: typeof step.value) {
-  if (s === 'info') return form.firstName && form.lastName && form.email
+  if (s === 'info') return form.firstName && form.lastName && form.email && emailValid.value
   if (s === 'photos') return photoFilenames.value.length > 0
   return true
 }
@@ -506,8 +510,8 @@ const filteredOrders = computed(() => {
                 <UInput v-model="form.lastName" placeholder="Dupont" color="neutral" class="w-full" />
               </UFormField>
             </div>
-            <UFormField label="E-mail">
-              <UInput v-model="form.email" type="email" placeholder="marie@example.com" color="neutral" class="w-full" />
+            <UFormField label="E-mail" :error="emailTouched && form.email && !emailValid ? 'Adresse e-mail invalide' : undefined">
+              <UInput v-model="form.email" type="email" placeholder="marie@example.com" :color="emailTouched && form.email && !emailValid ? 'error' : 'neutral'" class="w-full" @blur="emailTouched = true" />
             </UFormField>
           </div>
         </template>
