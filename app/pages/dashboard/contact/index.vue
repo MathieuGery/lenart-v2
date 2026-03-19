@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const toast = useToast()
-const { data: messages, refresh } = await useFetch('/api/contact')
+const { data: messages, refresh } = await useFetch<ContactMessage[]>('/api/contact')
 
 const STATUS_LABEL: Record<string, string> = {
   new: 'Nouveau',

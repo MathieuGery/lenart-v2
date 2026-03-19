@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const { user } = useUserSession()
 
-const { data: stats, status } = await useFetch('/api/stats')
+const { data: stats, status } = await useFetch<DashboardStats>('/api/stats')
 
 const loading = computed(() => status.value === 'pending')
 

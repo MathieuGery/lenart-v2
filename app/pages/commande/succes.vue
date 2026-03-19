@@ -1,27 +1,12 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'public' })
 
-interface OrderDetail {
-  id: string
-  status: string
-  cashPayment: boolean
-  email: string
-  firstName: string
-  lastName: string
-  totalCents: number
-  photoCount: number
-  photos: { id: string, filename: string, url: string }[]
-  createdAt: string
-}
-
 const route = useRoute()
 const orderId = route.query.orderId as string | undefined
 
-const { data: _orderData, status } = await useFetch(
-  orderId ? `/api/public/orders/${orderId}` : null,
-  { default: () => null }
-)
-const order = _orderData as unknown as Ref<OrderDetail | null>
+const { data: order, status } = orderId
+  ? await useFetch<PublicOrderDetail>(`/api/public/orders/${orderId}`)
+  : { data: ref(null) as Ref<PublicOrderDetail | null>, status: ref('idle') }
 
 const cart = useCart()
 

@@ -6,8 +6,8 @@ definePageMeta({
 const route = useRoute()
 const id = route.params.id as string
 
-const { data: collection, status } = await useFetch(`/api/public/collections/${id}`)
-const { data: formulas } = await useFetch('/api/public/pricing')
+const { data: collection, status } = await useFetch<CollectionDetail>(`/api/public/collections/${id}`)
+const { data: formulas } = await useFetch<PricingFormula[]>('/api/public/pricing')
 
 if (status.value === 'error' || (!collection.value && status.value !== 'pending')) {
   throw createError({ statusCode: 404, message: 'Concours introuvable' })

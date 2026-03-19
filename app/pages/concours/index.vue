@@ -3,7 +3,7 @@ definePageMeta({
   layout: 'public'
 })
 
-const { data: collections, status } = await useFetch('/api/public/collections')
+const { data: collections, status } = await useFetch<PublicCollectionListItem[]>('/api/public/collections')
 </script>
 
 <template>

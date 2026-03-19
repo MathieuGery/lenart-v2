@@ -3,7 +3,7 @@ const route = useRoute()
 const toast = useToast()
 const id = route.params.id as string
 
-const { data: collection, refresh } = await useFetch(`/api/collections/${id}`)
+const { data: collection, refresh } = await useFetch<CollectionDetail>(`/api/collections/${id}`)
 
 if (!collection.value) {
   throw createError({ statusCode: 404, message: 'Collection introuvable' })

@@ -3,7 +3,7 @@ const route = useRoute()
 const id = route.params.id as string
 const toast = useToast()
 
-const { data: order, refresh } = await useFetch(`/api/orders/${id}`)
+const { data: order, refresh } = await useFetch<OrderDetail>(`/api/orders/${id}`)
 
 if (!order.value) {
   throw createError({ statusCode: 404, message: 'Commande introuvable' })
@@ -62,7 +62,7 @@ const editFilenameInput = ref('')
 const { data: appSettings } = await useFetch<Record<string, string>>('/api/settings')
 
 // Formulas
-const { data: formulas } = await useFetch<{ id: string, name: string, basePriceCents: number, digitalPhotosCount: number, extraPhotoPriceCents: number | null, isTourComplete: boolean }[]>('/api/public/pricing')
+const { data: formulas } = await useFetch<PricingFormula[]>('/api/public/pricing')
 
 const selectedFormula = computed(() => {
   if (!editForm.formulaId) return null
@@ -108,7 +108,7 @@ function startEditing() {
   // Find formula ID by name
   const f = formulas.value?.find(f => f.name === order.value!.formulaName)
   editForm.formulaId = f?.id ?? ''
-  editFilenames.value = order.value.photos.map((p: any) => p.filename).filter(Boolean)
+  editFilenames.value = order.value.photos.map((p: OrderPhoto) => p.filename).filter((n): n is string => !!n)
   editFilenameInput.value = ''
   editing.value = true
 }
@@ -265,10 +265,10 @@ async function saveEdit() {
             <div class="flex items-center justify-between mb-4">
               <h2 class="text-sm font-medium">Photos commandées ({{ order.photos.length }})</h2>
               <UBadge
-                v-if="order.photos.some((p: any) => !p.linked)"
+                v-if="order.photos.some((p: OrderPhoto) => !p.linked)"
                 color="warning" variant="subtle" size="sm"
               >
-                {{ order.photos.filter((p: any) => !p.linked).length }} en attente de liaison
+                {{ order.photos.filter((p: OrderPhoto) => !p.linked).length }} en attente de liaison
               </UBadge>
             </div>
             <div v-if="order.photos.length" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
@@ -404,9 +404,9 @@ async function saveEdit() {
               >
                 <div class="flex items-center gap-2 min-w-0">
                   <UIcon
-                    :name="order.photos.some((p: any) => p.filename === name && p.linked) ? 'i-lucide-image' : 'i-lucide-image-off'"
+                    :name="order.photos.some((p: OrderPhoto) => p.filename === name && p.linked) ? 'i-lucide-image' : 'i-lucide-image-off'"
                     class="size-3.5 shrink-0"
-                    :class="order.photos.some((p: any) => p.filename === name && p.linked) ? 'text-success' : 'text-muted'"
+                    :class="order.photos.some((p: OrderPhoto) => p.filename === name && p.linked) ? 'text-success' : 'text-muted'"
                   />
                   <span class="truncate">{{ name }}</span>
                 </div>

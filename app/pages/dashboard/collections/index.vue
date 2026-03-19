@@ -4,7 +4,7 @@ const modalOpen = ref(false)
 const newCollection = reactive({ name: '', description: '' })
 const creating = ref(false)
 
-const { data: collections, refresh } = await useFetch('/api/collections')
+const { data: collections, refresh } = await useFetch<CollectionListItem[]>('/api/collections')
 
 async function createCollection() {
   if (!newCollection.name.trim()) return

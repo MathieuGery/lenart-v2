@@ -3,7 +3,7 @@ definePageMeta({
   layout: 'public'
 })
 
-const { data: collections } = await useFetch('/api/public/collections')
+const { data: collections } = await useFetch<PublicCollectionListItem[]>('/api/public/collections')
 
 const recentCollections = computed(() => collections.value?.slice(0, 3) ?? [])
 

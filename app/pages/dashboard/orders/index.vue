@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const toast = useToast()
-const { data: orders, refresh } = await useFetch('/api/orders')
+const { data: orders, refresh } = await useFetch<OrderListItem[]>('/api/orders')
 
 const syncing = ref(false)
 async function syncOrders() {
@@ -38,7 +38,7 @@ const creating = ref(false)
 const createdCheckoutUrl = ref<string | null>(null)
 
 // Formulas
-const { data: formulas } = await useFetch<{ id: string, name: string, basePriceCents: number, digitalPhotosCount: number, extraPhotoPriceCents: number | null, isTourComplete: boolean }[]>('/api/public/pricing')
+const { data: formulas } = await useFetch<PricingFormula[]>('/api/public/pricing')
 
 const selectedFormula = computed(() => {
   if (!form.formulaId) return null
@@ -77,7 +77,7 @@ function removeFilename(index: number) {
 }
 
 // Terminals
-const { data: terminals } = await useFetch('/api/orders/terminals')
+const { data: terminals } = await useFetch<Terminal[]>('/api/orders/terminals')
 
 function openModal() {
   form.firstName = ''
