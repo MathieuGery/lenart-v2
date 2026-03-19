@@ -99,6 +99,10 @@ export interface OrderDetail {
   email: string
   firstName: string
   lastName: string
+  address: string | null
+  city: string | null
+  postalCode: string | null
+  country: string | null
   status: string
   cashPayment: boolean
   totalCents: number

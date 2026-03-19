@@ -8,6 +8,10 @@ const form = reactive({
   firstName: '',
   lastName: '',
   email: '',
+  address: '',
+  city: '',
+  postalCode: '',
+  country: 'France',
   paymentMethod: 'online' as 'online' | 'cash'
 })
 const loading = ref(false)
@@ -34,7 +38,13 @@ async function submitOrder() {
         email: form.email,
         photoIds: cart.items.value.map(i => i.id),
         formulaId: cart.formula.value?.id,
-        paymentMethod: form.paymentMethod
+        paymentMethod: form.paymentMethod,
+        ...(form.paymentMethod === 'online' ? {
+          address: form.address,
+          city: form.city,
+          postalCode: form.postalCode,
+          country: form.country
+        } : {})
       }
     })
 
@@ -296,6 +306,56 @@ async function submitOrder() {
                       class="w-full rounded-md border border-default bg-default px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
                     >
                   </div>
+
+                  <!-- Address fields (online only) -->
+                  <template v-if="form.paymentMethod === 'online'">
+                    <div class="space-y-1.5">
+                      <label class="text-xs font-medium">Adresse</label>
+                      <input
+                        v-model="form.address"
+                        required
+                        type="text"
+                        autocomplete="street-address"
+                        placeholder="12 rue des Écuries"
+                        class="w-full rounded-md border border-default bg-default px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+                      >
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                      <div class="space-y-1.5">
+                        <label class="text-xs font-medium">Code postal</label>
+                        <input
+                          v-model="form.postalCode"
+                          required
+                          type="text"
+                          autocomplete="postal-code"
+                          placeholder="75001"
+                          class="w-full rounded-md border border-default bg-default px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+                        >
+                      </div>
+                      <div class="space-y-1.5">
+                        <label class="text-xs font-medium">Ville</label>
+                        <input
+                          v-model="form.city"
+                          required
+                          type="text"
+                          autocomplete="address-level2"
+                          placeholder="Paris"
+                          class="w-full rounded-md border border-default bg-default px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+                        >
+                      </div>
+                    </div>
+                    <div class="space-y-1.5">
+                      <label class="text-xs font-medium">Pays</label>
+                      <input
+                        v-model="form.country"
+                        required
+                        type="text"
+                        autocomplete="country-name"
+                        placeholder="France"
+                        class="w-full rounded-md border border-default bg-default px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+                      >
+                    </div>
+                  </template>
 
                   <!-- Payment method -->
                   <div class="space-y-2">

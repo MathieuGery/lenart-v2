@@ -10,8 +10,15 @@ const bodySchema = z.object({
   email: z.string().email(),
   photoIds: z.array(z.string().uuid()).min(1).max(500),
   formulaId: z.string().uuid().optional(),
-  paymentMethod: z.enum(['online', 'cash']).default('online')
-})
+  paymentMethod: z.enum(['online', 'cash']).default('online'),
+  address: z.string().min(1).max(500).optional(),
+  city: z.string().min(1).max(255).optional(),
+  postalCode: z.string().min(1).max(20).optional(),
+  country: z.string().min(1).max(255).optional()
+}).refine(
+  data => data.paymentMethod !== 'online' || (data.address && data.city && data.postalCode && data.country),
+  { message: 'L\'adresse postale est requise pour un paiement en ligne' }
+)
 
 export default defineEventHandler(async (event) => {
   const body = await readValidatedBody(event, bodySchema.parse)
@@ -61,6 +68,10 @@ export default defineEventHandler(async (event) => {
     email: body.email,
     firstName: body.firstName,
     lastName: body.lastName,
+    address: body.address,
+    city: body.city,
+    postalCode: body.postalCode,
+    country: body.country,
     totalCents,
     formulaName,
     cashPayment: body.paymentMethod === 'cash',

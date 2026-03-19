@@ -238,6 +238,16 @@ async function saveEdit() {
             </div>
           </div>
 
+          <!-- Address -->
+          <div v-if="order.address" class="border border-default rounded-lg p-5">
+            <h2 class="text-sm font-medium mb-3">Adresse postale</h2>
+            <div class="text-sm space-y-0.5">
+              <p>{{ order.address }}</p>
+              <p>{{ order.postalCode }} {{ order.city }}</p>
+              <p v-if="order.country" class="text-muted">{{ order.country }}</p>
+            </div>
+          </div>
+
           <!-- Status -->
           <div class="border border-default rounded-lg p-5">
             <h2 class="text-sm font-medium mb-4">Statut de la commande</h2>
