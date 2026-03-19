@@ -29,53 +29,51 @@ const form = reactive({
   lastName: '',
   email: '',
   paymentMethod: 'link' as 'link' | 'terminal' | 'cash',
-  terminalId: ''
+  terminalId: '',
+  formulaId: '' as string
 })
-const selectedPhotoIds = ref<string[]>([])
+const photoFilenames = ref<string[]>([])
+const filenameInput = ref('')
 const creating = ref(false)
 const createdCheckoutUrl = ref<string | null>(null)
 
-// Collections + photo picker
-const { data: collections } = await useFetch('/api/collections')
-const expandedCollection = ref<string | null>(null)
-const collectionPhotos = ref<Record<string, { id: string, filename: string, url: string }[]>>({})
-const photoSearch = ref('')
+// Formulas
+const { data: formulas } = await useFetch<{ id: string, name: string, basePriceCents: number, digitalPhotosCount: number, extraPhotoPriceCents: number | null, isTourComplete: boolean }[]>('/api/public/pricing')
 
-async function loadCollection(id: string) {
-  if (!collectionPhotos.value[id]) {
-    const data = await $fetch<{ photos: { id: string, filename: string, url: string }[] }>(`/api/collections/${id}`)
-    collectionPhotos.value[id] = data.photos
-  }
-}
-
-async function toggleCollection(id: string) {
-  if (expandedCollection.value === id) {
-    expandedCollection.value = null
-    return
-  }
-  expandedCollection.value = id
-  await loadCollection(id)
-}
-
-watch(photoSearch, async (val) => {
-  if (!val) return
-  await Promise.all((collections.value ?? []).map(col => loadCollection(col.id)))
+const selectedFormula = computed(() => {
+  if (!form.formulaId) return null
+  return formulas.value?.find(f => f.id === form.formulaId) ?? null
 })
 
-const searchResults = computed(() => {
-  const q = photoSearch.value.trim().toLowerCase()
-  if (!q) return []
-  return (collections.value ?? []).flatMap(col =>
-    (collectionPhotos.value[col.id] ?? [])
-      .filter(p => p.filename.toLowerCase().includes(q))
-      .map(p => ({ ...p, collectionName: col.name }))
-  )
+const maxPhotos = computed(() => {
+  const f = selectedFormula.value
+  if (!f) return Infinity // sans formule = pas de limite
+  if (f.isTourComplete) return Infinity // tour complet = pas de limite
+  if (f.extraPhotoPriceCents != null) return Infinity // photos supplémentaires autorisées
+  return f.digitalPhotosCount // pas de supplément = limité au nombre inclus
 })
 
-function togglePhoto(id: string) {
-  const idx = selectedPhotoIds.value.indexOf(id)
-  if (idx === -1) selectedPhotoIds.value.push(id)
-  else selectedPhotoIds.value.splice(idx, 1)
+const canAddMore = computed(() => photoFilenames.value.length < maxPhotos.value)
+
+// Trim filenames when switching to a more restrictive formula
+watch(() => form.formulaId, () => {
+  if (photoFilenames.value.length > maxPhotos.value) {
+    photoFilenames.value.splice(maxPhotos.value)
+  }
+})
+
+function addFilename() {
+  let name = filenameInput.value.trim()
+  if (!name || !canAddMore.value) return
+  if (!/\.\w+$/.test(name)) name += '.jpg'
+  if (!photoFilenames.value.includes(name)) {
+    photoFilenames.value.push(name)
+  }
+  filenameInput.value = ''
+}
+
+function removeFilename(index: number) {
+  photoFilenames.value.splice(index, 1)
 }
 
 // Terminals
@@ -87,16 +85,28 @@ function openModal() {
   form.email = ''
   form.paymentMethod = 'link'
   form.terminalId = ''
-  selectedPhotoIds.value = []
-  expandedCollection.value = null
-  photoSearch.value = ''
+  form.formulaId = ''
+  photoFilenames.value = []
+  filenameInput.value = ''
   step.value = 'info'
   createdCheckoutUrl.value = null
   modalOpen.value = true
 }
 
-const priceCents = useRuntimeConfig().public.photoPriceCents
-const totalEuros = computed(() => ((selectedPhotoIds.value.length * Number(priceCents)) / 100).toFixed(2))
+const totalEuros = computed(() => {
+  const count = photoFilenames.value.length
+  if (count === 0) return '0.00'
+  if (form.formulaId) {
+    const f = formulas.value?.find(f => f.id === form.formulaId)
+    if (f) {
+      const extra = Math.max(0, count - f.digitalPhotosCount)
+      const extraCost = f.extraPhotoPriceCents != null ? extra * f.extraPhotoPriceCents : 0
+      return ((f.basePriceCents + extraCost) / 100).toFixed(2)
+    }
+  }
+  const priceCents = Number(useRuntimeConfig().public.photoPriceCents ?? 500)
+  return ((count * priceCents) / 100).toFixed(2)
+})
 
 async function createOrder() {
   creating.value = true
@@ -107,7 +117,8 @@ async function createOrder() {
         firstName: form.firstName,
         lastName: form.lastName,
         email: form.email,
-        photoIds: selectedPhotoIds.value,
+        photoFilenames: photoFilenames.value,
+        formulaId: form.formulaId || undefined,
         paymentMethod: form.paymentMethod,
         terminalId: form.terminalId || undefined
       }
@@ -135,7 +146,7 @@ function copyToClipboard(text: string) {
 
 function canAdvance(s: typeof step.value) {
   if (s === 'info') return form.firstName && form.lastName && form.email
-  if (s === 'photos') return selectedPhotoIds.value.length > 0
+  if (s === 'photos') return photoFilenames.value.length > 0
   return true
 }
 
@@ -498,102 +509,119 @@ const filteredOrders = computed(() => {
           </div>
         </template>
 
-        <!-- Step 2 – Photo picker -->
+        <!-- Step 2 – Photos (filenames) + Formula -->
         <template v-else-if="step === 'photos'">
-          <p class="text-xs text-muted mb-3">
-            {{ selectedPhotoIds.length }} photo{{ selectedPhotoIds.length !== 1 ? 's' : '' }} sélectionnée{{ selectedPhotoIds.length !== 1 ? 's' : '' }}
-            <span v-if="selectedPhotoIds.length > 0"> — {{ totalEuros }} €</span>
-          </p>
-
-          <!-- Filename search -->
-          <UInput
-            v-model="photoSearch"
-            icon="i-lucide-search"
-            placeholder="Rechercher par nom de fichier…"
-            size="sm"
-            color="neutral"
-            class="w-full mb-3"
-            :trailing="photoSearch ? true : false"
-          >
-            <template v-if="photoSearch" #trailing>
-              <button type="button" class="text-muted hover:text-highlighted" @click="photoSearch = ''">
-                <UIcon name="i-lucide-x" class="size-3.5" />
-              </button>
-            </template>
-          </UInput>
-
-          <!-- Search results -->
-          <div v-if="photoSearch" class="max-h-96 overflow-y-auto pr-1">
-            <p v-if="searchResults.length === 0" class="text-center text-xs text-muted py-8">
-              Aucune photo ne correspond à « {{ photoSearch }} ».
-            </p>
-            <div v-else class="grid grid-cols-5 gap-1.5">
-              <button
-                v-for="photo in searchResults"
-                :key="photo.id"
-                type="button"
-                class="relative aspect-4/3 rounded overflow-hidden bg-muted/10 group"
-                :title="photo.filename"
-                @click="togglePhoto(photo.id)"
-              >
-                <img :src="photo.url" :alt="photo.filename" class="size-full object-cover">
-                <div
-                  v-if="selectedPhotoIds.includes(photo.id)"
-                  class="absolute inset-0 bg-primary/40 ring-2 ring-inset ring-primary rounded flex items-center justify-center"
+          <div class="space-y-4">
+            <!-- Formula selector -->
+            <div class="space-y-2">
+              <label class="text-sm font-medium">Formule</label>
+              <div class="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  class="px-3 py-2 rounded-lg border-2 text-left text-sm transition-colors"
+                  :class="!form.formulaId ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
+                  @click="form.formulaId = ''"
                 >
-                  <UIcon name="i-lucide-check" class="size-4 text-white" />
-                </div>
-                <div class="absolute bottom-0 inset-x-0 bg-black/50 px-1 py-0.5 text-white text-[9px] leading-tight truncate opacity-0 group-active:opacity-100 transition-opacity">
-                  {{ photo.filename }}
-                </div>
-              </button>
-            </div>
-          </div>
-
-          <!-- Normal collection list (when not searching) -->
-          <div v-else class="space-y-2 max-h-96 overflow-y-auto pr-1">
-            <div
-              v-for="col in collections"
-              :key="col.id"
-              class="border border-default rounded-lg overflow-hidden"
-            >
-              <button
-                type="button"
-                class="w-full flex items-center justify-between px-3 py-2.5 text-sm hover:bg-elevated/40 transition-colors"
-                @click="toggleCollection(col.id)"
-              >
-                <span class="font-medium truncate">{{ col.name }}</span>
-                <div class="flex items-center gap-2 shrink-0">
-                  <span class="text-xs text-muted">{{ col.photoCount }} photos</span>
-                  <UIcon
-                    :name="expandedCollection === col.id ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-                    class="size-3.5 text-muted"
-                  />
-                </div>
-              </button>
-              <div v-if="expandedCollection === col.id" class="border-t border-default p-2">
-                <div v-if="!collectionPhotos[col.id]" class="py-4 text-center text-xs text-muted">
-                  Chargement…
-                </div>
-                <div v-else class="grid grid-cols-5 gap-1.5">
-                  <button
-                    v-for="photo in collectionPhotos[col.id]"
-                    :key="photo.id"
-                    type="button"
-                    class="relative aspect-4/3 rounded overflow-hidden bg-muted/10"
-                    :title="photo.filename"
-                    @click="togglePhoto(photo.id)"
-                  >
-                    <img :src="photo.url" :alt="photo.filename" class="size-full object-cover">
-                    <div
-                      v-if="selectedPhotoIds.includes(photo.id)"
-                      class="absolute inset-0 bg-primary/40 ring-2 ring-inset ring-primary rounded flex items-center justify-center"
-                    >
-                      <UIcon name="i-lucide-check" class="size-4 text-white" />
-                    </div>
-                  </button>
-                </div>
+                  <p class="font-medium">Sans formule</p>
+                  <p class="text-xs text-muted">Prix par photo</p>
+                </button>
+                <button
+                  v-for="f in formulas"
+                  :key="f.id"
+                  type="button"
+                  class="px-3 py-2 rounded-lg border-2 text-left text-sm transition-colors"
+                  :class="form.formulaId === f.id ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
+                  @click="form.formulaId = f.id"
+                >
+                  <p class="font-medium">{{ f.name }}</p>
+                  <p class="text-xs text-muted">{{ (f.basePriceCents / 100).toFixed(2) }} € — {{ f.digitalPhotosCount }} photos</p>
+                </button>
               </div>
+            </div>
+
+            <!-- Formula info -->
+            <div v-if="selectedFormula" class="rounded-lg bg-elevated/40 px-3 py-2 text-xs space-y-1">
+              <p>
+                <span class="font-medium">{{ selectedFormula.digitalPhotosCount }}</span> photo{{ selectedFormula.digitalPhotosCount !== 1 ? 's' : '' }} incluse{{ selectedFormula.digitalPhotosCount !== 1 ? 's' : '' }}
+              </p>
+              <p v-if="selectedFormula.extraPhotoPriceCents != null" class="text-muted">
+                Photo supplémentaire : {{ (selectedFormula.extraPhotoPriceCents / 100).toFixed(2) }} € / photo
+              </p>
+              <p v-else-if="!selectedFormula.isTourComplete" class="text-muted">
+                Pas de photo supplémentaire possible
+              </p>
+              <p v-if="selectedFormula.isTourComplete" class="text-muted">
+                Tour complet — nombre illimité
+              </p>
+            </div>
+
+            <!-- Filename input -->
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <label class="text-sm font-medium">Noms des photos</label>
+                <span v-if="maxPhotos !== Infinity" class="text-xs text-muted tabular-nums">
+                  {{ photoFilenames.length }} / {{ maxPhotos }}
+                </span>
+              </div>
+              <form class="flex gap-2" @submit.prevent="addFilename">
+                <UInput
+                  v-model="filenameInput"
+                  placeholder="IMG_1234.jpg"
+                  size="sm"
+                  color="neutral"
+                  class="flex-1"
+                  :disabled="!canAddMore"
+                  @keydown.enter.prevent="addFilename"
+                />
+                <UButton
+                  type="submit"
+                  icon="i-lucide-plus"
+                  color="neutral"
+                  size="sm"
+                  :disabled="!filenameInput.trim() || !canAddMore"
+                >
+                  Ajouter
+                </UButton>
+              </form>
+              <p v-if="!canAddMore" class="text-xs text-warning">
+                Nombre maximum de photos atteint pour cette formule.
+              </p>
+              <p v-else class="text-xs text-muted">
+                Les photos seront liées automatiquement lors de l'upload dans une collection.
+              </p>
+            </div>
+
+            <!-- Filename list -->
+            <div v-if="photoFilenames.length" class="space-y-1 max-h-60 overflow-y-auto">
+              <div
+                v-for="(name, idx) in photoFilenames"
+                :key="idx"
+                class="flex items-center justify-between px-3 py-2 rounded-lg border border-default text-sm"
+              >
+                <div class="flex items-center gap-2 min-w-0">
+                  <UIcon name="i-lucide-image" class="size-3.5 text-muted shrink-0" />
+                  <span class="truncate">{{ name }}</span>
+                </div>
+                <button
+                  type="button"
+                  class="text-muted hover:text-error shrink-0"
+                  @click="removeFilename(idx)"
+                >
+                  <UIcon name="i-lucide-x" class="size-3.5" />
+                </button>
+              </div>
+            </div>
+
+            <!-- Summary -->
+            <div class="text-xs text-muted space-y-0.5">
+              <p>
+                {{ photoFilenames.length }} photo{{ photoFilenames.length !== 1 ? 's' : '' }}
+                <span v-if="photoFilenames.length > 0"> — {{ totalEuros }} €</span>
+              </p>
+              <p v-if="selectedFormula && photoFilenames.length > selectedFormula.digitalPhotosCount && selectedFormula.extraPhotoPriceCents != null">
+                dont {{ photoFilenames.length - selectedFormula.digitalPhotosCount }} supplémentaire{{ photoFilenames.length - selectedFormula.digitalPhotosCount !== 1 ? 's' : '' }}
+                (+{{ (((photoFilenames.length - selectedFormula.digitalPhotosCount) * selectedFormula.extraPhotoPriceCents) / 100).toFixed(2) }} €)
+              </p>
             </div>
           </div>
         </template>
@@ -624,7 +652,7 @@ const filteredOrders = computed(() => {
 
           <template v-else>
             <p class="text-sm font-medium mb-4">
-              {{ selectedPhotoIds.length }} photo{{ selectedPhotoIds.length !== 1 ? 's' : '' }} — {{ totalEuros }} €
+              {{ photoFilenames.length }} photo{{ photoFilenames.length !== 1 ? 's' : '' }} — {{ totalEuros }} €
             </p>
 
             <!-- Method selection -->

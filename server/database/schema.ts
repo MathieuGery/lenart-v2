@@ -61,7 +61,8 @@ export const contactMessages = pgTable('contact_messages', {
 export const orderItems = pgTable('order_items', {
   id: uuid('id').defaultRandom().primaryKey(),
   orderId: uuid('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
-  photoId: uuid('photo_id').notNull().references(() => photos.id, { onDelete: 'restrict' }),
+  photoId: uuid('photo_id').references(() => photos.id, { onDelete: 'restrict' }),
+  photoFilename: varchar('photo_filename', { length: 255 }),
   priceCents: integer('price_cents').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
 })

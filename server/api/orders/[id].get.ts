@@ -15,18 +15,25 @@ export default defineEventHandler(async (event) => {
   }
 
   const items = await db
-    .select({ photo: photos })
+    .select({
+      itemId: orderItems.id,
+      photoId: orderItems.photoId,
+      photoFilename: orderItems.photoFilename,
+      photo: photos
+    })
     .from(orderItems)
-    .innerJoin(photos, eq(orderItems.photoId, photos.id))
+    .leftJoin(photos, eq(orderItems.photoId, photos.id))
     .where(eq(orderItems.orderId, order.id))
 
-  const photosWithUrls = await Promise.all(
-    items.map(async ({ photo }) => ({
-      id: photo.id,
-      filename: photo.filename,
-      url: await blobPresignedUrl(photo.key)
+  const orderPhotos = await Promise.all(
+    items.map(async ({ itemId, photoId, photoFilename, photo }) => ({
+      itemId,
+      id: photoId,
+      filename: photo?.filename ?? photoFilename,
+      linked: !!photoId,
+      url: photo ? await blobPresignedUrl(photo.key) : null
     }))
   )
 
-  return { ...order, photos: photosWithUrls }
+  return { ...order, photos: orderPhotos }
 })

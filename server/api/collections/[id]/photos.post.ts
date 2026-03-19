@@ -1,6 +1,6 @@
 import { randomUUID, createHash } from 'node:crypto'
-import { eq, and } from 'drizzle-orm'
-import { collections, photos } from '~~/server/database/schema'
+import { eq, and, isNull } from 'drizzle-orm'
+import { collections, photos, orderItems } from '~~/server/database/schema'
 import { db } from '~~/server/utils/db'
 import { applyWatermark } from '~~/server/utils/watermark'
 
@@ -57,6 +57,15 @@ export default defineEventHandler(async (event) => {
         size: watermarked.length
       })
       .returning()
+
+    // Auto-link unlinked order items matching this filename
+    const photoName = photo.filename
+    await db.update(orderItems)
+      .set({ photoId: photo.id })
+      .where(and(
+        eq(orderItems.photoFilename, photoName),
+        isNull(orderItems.photoId)
+      ))
 
     const url = await blobPresignedUrl(key)
     uploaded.push({ ...photo, url })

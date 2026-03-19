@@ -1,38 +1,70 @@
 import { z } from 'zod'
 import { eq, inArray } from 'drizzle-orm'
-import { photos, orders, orderItems } from '~~/server/database/schema'
+import { photos, orders, orderItems, pricingFormulas } from '~~/server/database/schema'
 import { db } from '~~/server/utils/db'
 
 const bodySchema = z.object({
   firstName: z.string().min(1).max(255),
   lastName: z.string().min(1).max(255),
   email: z.string().email(),
-  photoIds: z.array(z.string().uuid()).min(1).max(100),
+  photoIds: z.array(z.string().uuid()).max(100).optional(),
+  photoFilenames: z.array(z.string().min(1).max(255)).max(100).optional(),
+  formulaId: z.string().uuid().optional(),
   paymentMethod: z.enum(['link', 'terminal', 'cash']),
   terminalId: z.string().optional()
 }).refine(d => d.paymentMethod !== 'terminal' || !!d.terminalId, {
   message: 'terminalId requis pour le paiement par terminal',
   path: ['terminalId']
+}).refine(d => (d.photoIds?.length ?? 0) + (d.photoFilenames?.length ?? 0) > 0, {
+  message: 'Au moins une photo ou un nom de fichier requis'
 })
 
 export default defineEventHandler(async (event) => {
   const body = await readValidatedBody(event, bodySchema.parse)
 
-  const priceCents = Number(process.env.PHOTO_PRICE_CENTS ?? 500)
   const appUrl = process.env.NUXT_APP_URL ?? 'https://v2.len-art.fr'
 
-  // Validate photos
-  const foundPhotos = await db
-    .select({ id: photos.id })
-    .from(photos)
-    .where(inArray(photos.id, body.photoIds))
+  // Validate existing photos if any
+  const linkedPhotoIds = body.photoIds ?? []
+  if (linkedPhotoIds.length > 0) {
+    const foundPhotos = await db
+      .select({ id: photos.id, filename: photos.filename })
+      .from(photos)
+      .where(inArray(photos.id, linkedPhotoIds))
 
-  if (foundPhotos.length !== body.photoIds.length) {
-    throw createError({ statusCode: 400, message: 'Certaines photos sont introuvables' })
+    if (foundPhotos.length !== linkedPhotoIds.length) {
+      throw createError({ statusCode: 400, message: 'Certaines photos sont introuvables' })
+    }
   }
 
-  const totalCents = body.photoIds.length * priceCents
-  const euros = (totalCents / 100).toFixed(2)
+  const filenames = body.photoFilenames ?? []
+  const totalItems = linkedPhotoIds.length + filenames.length
+
+  // Calculate total
+  let totalCents: number
+  let priceCentsPerItem: number
+  let formulaName: string | undefined
+
+  if (body.formulaId) {
+    const [formula] = await db.select()
+      .from(pricingFormulas)
+      .where(eq(pricingFormulas.id, body.formulaId))
+
+    if (!formula?.isActive) {
+      throw createError({ statusCode: 400, message: 'Formule introuvable ou inactive' })
+    }
+
+    const extra = Math.max(0, totalItems - formula.digitalPhotosCount)
+    const extraCost = formula.extraPhotoPriceCents != null
+      ? extra * formula.extraPhotoPriceCents
+      : 0
+    totalCents = formula.basePriceCents + extraCost
+    priceCentsPerItem = totalItems > 0 ? Math.round(totalCents / totalItems) : 0
+    formulaName = formula.name
+  } else {
+    priceCentsPerItem = Number(process.env.PHOTO_PRICE_CENTS ?? 500)
+    totalCents = totalItems * priceCentsPerItem
+  }
 
   // Create order
   const [order] = await db.insert(orders).values({
@@ -40,6 +72,7 @@ export default defineEventHandler(async (event) => {
     firstName: body.firstName,
     lastName: body.lastName,
     totalCents,
+    formulaName,
     cashPayment: body.paymentMethod === 'cash',
     status: 'pending'
   }).returning()
@@ -47,9 +80,39 @@ export default defineEventHandler(async (event) => {
   if (!order) {
     throw createError({ statusCode: 500, message: 'Erreur lors de la création de la commande' })
   }
-  await db.insert(orderItems).values(
-    body.photoIds.map(photoId => ({ orderId: order.id, photoId, priceCents }))
-  )
+
+  // Insert order items for linked photos
+  const itemValues = []
+
+  if (linkedPhotoIds.length > 0) {
+    const foundPhotos = await db.select({ id: photos.id, filename: photos.filename })
+      .from(photos)
+      .where(inArray(photos.id, linkedPhotoIds))
+    const filenameMap = Object.fromEntries(foundPhotos.map(p => [p.id, p.filename]))
+
+    for (const photoId of linkedPhotoIds) {
+      itemValues.push({
+        orderId: order.id,
+        photoId,
+        photoFilename: filenameMap[photoId] ?? null,
+        priceCents: priceCentsPerItem
+      })
+    }
+  }
+
+  // Insert order items for filenames only (deferred linking)
+  for (const filename of filenames) {
+    itemValues.push({
+      orderId: order.id,
+      photoId: null,
+      photoFilename: filename,
+      priceCents: priceCentsPerItem
+    })
+  }
+
+  if (itemValues.length > 0) {
+    await db.insert(orderItems).values(itemValues)
+  }
 
   // Cash payment — no Mollie involved
   if (body.paymentMethod === 'cash') {
@@ -59,6 +122,7 @@ export default defineEventHandler(async (event) => {
   // Create Mollie payment
   const mollie = getMollie()
   const description = `Commande Len-Art #${order.id.slice(0, 8)}`
+  const euros = (totalCents / 100).toFixed(2)
 
   let payment
   if (body.paymentMethod === 'terminal') {
