@@ -45,6 +45,30 @@ async function updateStatus() {
   }
 }
 
+// Amazon link
+const amazonLinkInput = ref(order.value?.amazonLink ?? '')
+const savingAmazonLink = ref(false)
+
+async function saveAmazonLink() {
+  savingAmazonLink.value = true
+  try {
+    await $fetch(`/api/orders/${id}`, {
+      method: 'PATCH',
+      body: { amazonLink: amazonLinkInput.value || null }
+    })
+    await refresh()
+    toast.add({ title: 'Lien Amazon mis à jour', color: 'success' })
+  } catch {
+    toast.add({ title: 'Lien invalide', color: 'error' })
+  } finally {
+    savingAmazonLink.value = false
+  }
+}
+
+watch(() => order.value?.amazonLink, (v) => {
+  amazonLinkInput.value = v ?? ''
+})
+
 // Edit mode
 const editing = ref(false)
 const saving = ref(false)
@@ -303,6 +327,42 @@ async function saveEdit() {
               </template>
             </div>
             <p v-else class="text-sm text-muted">Aucune photo associée.</p>
+          </div>
+
+          <!-- Amazon link -->
+          <div class="border border-default rounded-lg p-5">
+            <h2 class="text-sm font-medium mb-3">Lien Amazon</h2>
+            <div class="flex items-center gap-2">
+              <UInput
+                v-model="amazonLinkInput"
+                placeholder="https://www.amazon.fr/…"
+                color="neutral"
+                size="sm"
+                class="flex-1"
+              />
+              <UButton
+                icon="i-lucide-save"
+                color="neutral"
+                size="sm"
+                :loading="savingAmazonLink"
+                :disabled="amazonLinkInput === (order.amazonLink ?? '')"
+                @click="saveAmazonLink"
+              />
+              <a
+                v-if="order.amazonLink"
+                :href="order.amazonLink"
+                target="_blank"
+                class="shrink-0"
+              >
+                <UButton
+                  icon="i-lucide-external-link"
+                  color="neutral"
+                  variant="ghost"
+                  size="sm"
+                  square
+                />
+              </a>
+            </div>
           </div>
 
           <!-- Mollie ID -->

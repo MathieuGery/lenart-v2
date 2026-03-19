@@ -1,4 +1,4 @@
-import { eq, count, sum, desc, and, ne } from 'drizzle-orm'
+import { eq, count, sum, desc, and, isNull } from 'drizzle-orm'
 import { orders, orderItems, photos, collections, contactMessages } from '~~/server/database/schema'
 import { db } from '~~/server/utils/db'
 
@@ -9,7 +9,9 @@ export default defineEventHandler(async () => {
     collectionCount,
     unreadMessages,
     recentOrders,
-    photosSold
+    photosSold,
+    unlinkedPhotos,
+    formulaStats
   ] = await Promise.all([
     // Orders grouped by status + cash_payment
     db.select({
@@ -55,7 +57,20 @@ export default defineEventHandler(async () => {
       .innerJoin(orders, and(
         eq(orders.id, orderItems.orderId),
         eq(orders.status, 'paid')
-      ))
+      )),
+
+    // Unlinked order items (photoId is null)
+    db.select({ total: count(orderItems.id) })
+      .from(orderItems)
+      .where(isNull(orderItems.photoId)),
+
+    // Orders grouped by formula
+    db.select({
+      formulaName: orders.formulaName,
+      orderCount: count(orders.id)
+    })
+      .from(orders)
+      .groupBy(orders.formulaName)
   ])
 
   // Aggregate revenue and order counts
@@ -104,12 +119,17 @@ export default defineEventHandler(async () => {
     },
     photos: {
       total: photoStats[0]?.total ?? 0,
-      sold: photosSold[0]?.total ?? 0
+      sold: photosSold[0]?.total ?? 0,
+      unlinked: unlinkedPhotos[0]?.total ?? 0
     },
     collections: collectionCount[0]?.total ?? 0,
     messages: {
       unread: unreadMessages[0]?.total ?? 0
     },
-    recentOrders
+    recentOrders,
+    formulas: formulaStats.map(r => ({
+      name: r.formulaName ?? 'Sans formule',
+      count: Number(r.orderCount)
+    }))
   }
 })

@@ -12,7 +12,8 @@ const bodySchema = z.object({
   lastName: z.string().min(1).max(255).optional(),
   email: z.string().email().optional(),
   formulaId: z.string().uuid().nullable().optional(),
-  photoFilenames: z.array(z.string().min(1).max(255)).optional()
+  photoFilenames: z.array(z.string().min(1).max(255)).optional(),
+  amazonLink: z.string().url().max(1000).nullable().optional()
 })
 
 export default defineEventHandler(async (event) => {
@@ -30,6 +31,7 @@ export default defineEventHandler(async (event) => {
   if (body.firstName) orderUpdate.firstName = body.firstName
   if (body.lastName) orderUpdate.lastName = body.lastName
   if (body.email) orderUpdate.email = body.email
+  if (body.amazonLink !== undefined) orderUpdate.amazonLink = body.amazonLink
 
   // Handle formula + photos change
   if (body.photoFilenames !== undefined) {

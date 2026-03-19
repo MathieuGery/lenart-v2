@@ -107,7 +107,7 @@ const STATUS_COLOR: Record<string, 'warning' | 'success' | 'error' | 'neutral'> 
               {{ stats?.photos.total ?? 0 }}
             </p>
             <p class="text-xs text-muted">
-              {{ stats?.photos.sold ?? 0 }} vendues · {{ stats?.collections ?? 0 }} concours
+              {{ stats?.photos.sold ?? 0 }} vendues · {{ stats?.photos.unlinked ?? 0 }} en attente · {{ stats?.collections ?? 0 }} concours
             </p>
           </div>
         </div>
@@ -124,6 +124,20 @@ const STATUS_COLOR: Record<string, 'warning' | 'success' | 'error' | 'neutral'> 
             <span>
               <span class="font-medium">{{ stats?.messages.unread }}</span>
               message{{ (stats?.messages.unread ?? 0) > 1 ? 's' : '' }} non lu{{ (stats?.messages.unread ?? 0) > 1 ? 's' : '' }}
+            </span>
+            <UIcon name="i-lucide-arrow-right" class="size-3 text-muted" />
+          </NuxtLink>
+
+          <!-- Unlinked photos -->
+          <NuxtLink
+            v-if="(stats?.photos.unlinked ?? 0) > 0"
+            to="/dashboard/orders"
+            class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-warning/40 bg-warning/5 text-sm hover:bg-warning/10 transition-colors"
+          >
+            <UIcon name="i-lucide-image-off" class="size-4 text-warning" />
+            <span>
+              <span class="font-medium">{{ stats?.photos.unlinked }}</span>
+              photo{{ (stats?.photos.unlinked ?? 0) > 1 ? 's' : '' }} en attente de liaison
             </span>
             <UIcon name="i-lucide-arrow-right" class="size-3 text-muted" />
           </NuxtLink>
@@ -257,6 +271,28 @@ const STATUS_COLOR: Record<string, 'warning' | 'success' | 'error' | 'neutral'> 
                     class="bg-orange-400 transition-all"
                     :style="{ width: `${((stats?.orders.cashPending ?? 0) / (stats?.orders.total ?? 1)) * 100}%` }"
                   />
+                </div>
+              </div>
+            </div>
+
+            <!-- Formulas breakdown -->
+            <div v-if="stats?.formulas?.length" class="border border-default rounded-lg overflow-hidden">
+              <div class="px-5 py-3 border-b border-default">
+                <h2 class="text-sm font-medium">
+                  Commandes par formule
+                </h2>
+              </div>
+              <div v-if="loading" class="px-5 py-3 space-y-3">
+                <div v-for="i in 3" :key="i" class="h-4 bg-muted/20 rounded animate-pulse" />
+              </div>
+              <div v-else class="px-5 py-3 space-y-2">
+                <div
+                  v-for="f in [...stats.formulas].sort((a, b) => b.count - a.count)"
+                  :key="f.name"
+                  class="flex items-center gap-3"
+                >
+                  <span class="text-xs flex-1 truncate">{{ f.name }}</span>
+                  <span class="text-xs font-medium tabular-nums">{{ f.count }}</span>
                 </div>
               </div>
             </div>

@@ -43,6 +43,7 @@ export const orders = pgTable('orders', {
   city: varchar('city', { length: 255 }),
   postalCode: varchar('postal_code', { length: 20 }),
   country: varchar('country', { length: 255 }),
+  amazonLink: varchar('amazon_link', { length: 1000 }),
   cashPayment: boolean('cash_payment').notNull().default(false),
   status: orderStatusEnum('status').notNull().default('pending'),
   totalCents: integer('total_cents').notNull(),

@@ -46,7 +46,7 @@ export interface ContactMessage {
 export interface DashboardStats {
   revenue: { paidCents: number, cashPendingCents: number }
   orders: { total: number, paid: number, pending: number, cashPending: number, cancelled: number, other: number }
-  photos: { total: number, sold: number }
+  photos: { total: number, sold: number, unlinked: number }
   collections: number
   messages: { unread: number }
   recentOrders: {
@@ -58,6 +58,10 @@ export interface DashboardStats {
     totalCents: number
     createdAt: string
     photoCount: number
+  }[]
+  formulas: {
+    name: string
+    count: number
   }[]
 }
 
@@ -103,6 +107,7 @@ export interface OrderDetail {
   city: string | null
   postalCode: string | null
   country: string | null
+  amazonLink: string | null
   status: string
   cashPayment: boolean
   totalCents: number
