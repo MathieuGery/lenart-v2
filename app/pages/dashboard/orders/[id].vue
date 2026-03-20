@@ -79,8 +79,76 @@ const editForm = reactive({
   email: '',
   formulaId: '' as string
 })
-const editFilenames = ref<string[]>([])
+interface EditPhotoItem {
+  filename: string
+  photoId: string | null
+  collectionName: string | null
+}
+const editPhotoItems = ref<EditPhotoItem[]>([])
 const editFilenameInput = ref('')
+
+// Photo search for edit mode
+const editSearchResults = ref<{ id: string, filename: string, collectionId: string, collectionName: string }[]>([])
+const editShowDropdown = ref(false)
+const editSelectedCollectionId = ref<string | undefined>(undefined)
+let editSearchTimeout: ReturnType<typeof setTimeout> | null = null
+
+const { data: collectionsData } = await useFetch<CollectionListItem[]>('/api/collections')
+
+const editCollectionOptions = computed(() => [
+  'Toutes les collections',
+  ...(collectionsData.value ?? []).map(c => c.name)
+])
+
+const editSelectedCollectionLabel = ref('Toutes les collections')
+
+watch(editSelectedCollectionLabel, (label) => {
+  const c = collectionsData.value?.find(c => c.name === label)
+  editSelectedCollectionId.value = c?.id
+})
+
+async function editSearchPhotos(query: string) {
+  if (query.trim().length < 2) {
+    editSearchResults.value = []
+    editShowDropdown.value = false
+    return
+  }
+  try {
+    const params: Record<string, string> = { q: query.trim() }
+    if (editSelectedCollectionId.value) params.collectionId = editSelectedCollectionId.value
+    editSearchResults.value = await $fetch('/api/photos/search', { params })
+    editShowDropdown.value = true
+  } catch {
+    editSearchResults.value = []
+  }
+}
+
+watch(editFilenameInput, (val) => {
+  if (editSearchTimeout) clearTimeout(editSearchTimeout)
+  if (val.trim().length < 2) {
+    editSearchResults.value = []
+    editShowDropdown.value = false
+    return
+  }
+  editSearchTimeout = setTimeout(() => editSearchPhotos(val), 300)
+})
+
+function editSelectPhoto(result: { id: string, filename: string, collectionName: string }) {
+  if (editPhotoItems.value.some(p => p.photoId === result.id)) return
+  if (!canAddMore.value) return
+  editPhotoItems.value.push({
+    filename: result.filename,
+    photoId: result.id,
+    collectionName: result.collectionName
+  })
+  editFilenameInput.value = ''
+  editSearchResults.value = []
+  editShowDropdown.value = false
+}
+
+function hideEditDropdown() {
+  setTimeout(() => { editShowDropdown.value = false }, 200)
+}
 
 // Settings (photo price)
 const { data: appSettings } = await useFetch<Record<string, string>>('/api/settings')
@@ -101,16 +169,16 @@ const maxPhotos = computed(() => {
   return f.digitalPhotosCount
 })
 
-const canAddMore = computed(() => editFilenames.value.length < maxPhotos.value)
+const canAddMore = computed(() => editPhotoItems.value.length < maxPhotos.value)
 
 watch(() => editForm.formulaId, () => {
-  if (editFilenames.value.length > maxPhotos.value) {
-    editFilenames.value.splice(maxPhotos.value)
+  if (editPhotoItems.value.length > maxPhotos.value) {
+    editPhotoItems.value.splice(maxPhotos.value)
   }
 })
 
 const editTotalEuros = computed(() => {
-  const count = editFilenames.value.length
+  const count = editPhotoItems.value.length
   if (count === 0) return '0.00'
   if (editForm.formulaId) {
     const f = selectedFormula.value
@@ -132,8 +200,18 @@ function startEditing() {
   // Find formula ID by name
   const f = formulas.value?.find(f => f.name === order.value!.formulaName)
   editForm.formulaId = f?.id ?? ''
-  editFilenames.value = order.value.photos.map((p: OrderPhoto) => p.filename).filter((n): n is string => !!n)
+  editPhotoItems.value = order.value.photos
+    .filter((p: OrderPhoto) => p.filename)
+    .map((p: OrderPhoto) => ({
+      filename: p.filename!,
+      photoId: p.linked ? p.id : null,
+      collectionName: p.collectionName ?? null
+    }))
   editFilenameInput.value = ''
+  editSearchResults.value = []
+  editShowDropdown.value = false
+  editSelectedCollectionId.value = undefined
+  editSelectedCollectionLabel.value = 'Toutes les collections'
   editing.value = true
 }
 
@@ -145,19 +223,24 @@ function addEditFilename() {
   let name = editFilenameInput.value.trim()
   if (!name || !canAddMore.value) return
   if (!/\.\w+$/.test(name)) name += '.jpg'
-  if (!editFilenames.value.includes(name)) {
-    editFilenames.value.push(name)
+  if (!editPhotoItems.value.some(p => p.filename === name)) {
+    editPhotoItems.value.push({ filename: name, photoId: null, collectionName: null })
   }
   editFilenameInput.value = ''
+  editSearchResults.value = []
+  editShowDropdown.value = false
 }
 
 function removeEditFilename(index: number) {
-  editFilenames.value.splice(index, 1)
+  editPhotoItems.value.splice(index, 1)
 }
 
 async function saveEdit() {
   saving.value = true
   try {
+    const linkedIds = editPhotoItems.value.filter(p => p.photoId).map(p => p.photoId!)
+    const unlinkedFilenames = editPhotoItems.value.filter(p => !p.photoId).map(p => p.filename)
+
     await $fetch(`/api/orders/${id}`, {
       method: 'PATCH',
       body: {
@@ -165,7 +248,8 @@ async function saveEdit() {
         lastName: editForm.lastName,
         email: editForm.email,
         formulaId: editForm.formulaId || null,
-        photoFilenames: editFilenames.value
+        photoIds: linkedIds.length ? linkedIds : undefined,
+        photoFilenames: unlinkedFilenames.length ? unlinkedFilenames : undefined
       }
     })
     await refresh()
@@ -446,48 +530,93 @@ async function saveEdit() {
             <div class="flex items-center justify-between">
               <h2 class="text-sm font-medium">Photos</h2>
               <span v-if="maxPhotos !== Infinity" class="text-xs text-muted tabular-nums">
-                {{ editFilenames.length }} / {{ maxPhotos }}
+                {{ editPhotoItems.length }} / {{ maxPhotos }}
               </span>
             </div>
 
-            <form class="flex gap-2" @submit.prevent="addEditFilename">
-              <UInput
-                v-model="editFilenameInput"
-                placeholder="IMG_1234"
-                size="sm"
-                color="neutral"
-                class="flex-1"
-                :disabled="!canAddMore"
-                @keydown.enter.prevent="addEditFilename"
-              />
-              <UButton
-                type="submit"
-                icon="i-lucide-plus"
-                color="neutral"
-                size="sm"
-                :disabled="!editFilenameInput.trim() || !canAddMore"
+            <!-- Collection filter -->
+            <USelect
+              v-model="editSelectedCollectionLabel"
+              :items="editCollectionOptions"
+              size="sm"
+              color="neutral"
+              class="w-full"
+            />
+
+            <!-- Search input -->
+            <div class="relative">
+              <form class="flex gap-2" @submit.prevent="addEditFilename">
+                <UInput
+                  v-model="editFilenameInput"
+                  placeholder="Rechercher ou saisir un nom de photo…"
+                  size="sm"
+                  color="neutral"
+                  class="flex-1"
+                  :disabled="!canAddMore"
+                  @focus="editFilenameInput.trim().length >= 2 && (editShowDropdown = true)"
+                  @blur="hideEditDropdown"
+                  @keydown.enter.prevent="addEditFilename"
+                />
+                <UButton
+                  type="submit"
+                  icon="i-lucide-plus"
+                  color="neutral"
+                  size="sm"
+                  :disabled="!editFilenameInput.trim() || !canAddMore"
+                >
+                  Ajouter
+                </UButton>
+              </form>
+
+              <!-- Search dropdown -->
+              <div
+                v-if="editShowDropdown && editSearchResults.length"
+                class="absolute left-0 right-12 top-full mt-1 z-50 border border-default rounded-lg bg-default shadow-lg max-h-48 overflow-y-auto"
               >
-                Ajouter
-              </UButton>
-            </form>
+                <button
+                  v-for="result in editSearchResults"
+                  :key="result.id"
+                  type="button"
+                  class="w-full flex items-center gap-3 px-3 py-2 text-left text-sm hover:bg-elevated/50 transition-colors"
+                  :class="{ 'opacity-40 cursor-not-allowed': editPhotoItems.some(p => p.photoId === result.id) }"
+                  :disabled="editPhotoItems.some(p => p.photoId === result.id)"
+                  @mousedown.prevent="editSelectPhoto(result)"
+                >
+                  <UIcon name="i-lucide-image" class="size-3.5 text-success shrink-0" />
+                  <div class="min-w-0 flex-1">
+                    <p class="truncate">{{ result.filename }}</p>
+                    <p class="text-[10px] text-muted truncate">{{ result.collectionName }}</p>
+                  </div>
+                  <UIcon v-if="editPhotoItems.some(p => p.photoId === result.id)" name="i-lucide-check" class="size-3.5 text-success shrink-0" />
+                </button>
+              </div>
+            </div>
 
             <p v-if="!canAddMore" class="text-xs text-warning">
               Nombre maximum de photos atteint pour cette formule.
             </p>
+            <p v-else class="text-xs text-muted">
+              Sélectionnez une photo existante ou tapez un nom pour une liaison différée.
+            </p>
 
-            <div v-if="editFilenames.length" class="space-y-1 max-h-60 overflow-y-auto">
+            <!-- Photo list -->
+            <div v-if="editPhotoItems.length" class="space-y-1 max-h-60 overflow-y-auto">
               <div
-                v-for="(name, idx) in editFilenames"
+                v-for="(item, idx) in editPhotoItems"
                 :key="idx"
                 class="flex items-center justify-between px-3 py-2 rounded-lg border border-default text-sm"
               >
                 <div class="flex items-center gap-2 min-w-0">
                   <UIcon
-                    :name="order.photos.some((p: OrderPhoto) => p.filename === name && p.linked) ? 'i-lucide-image' : 'i-lucide-image-off'"
+                    :name="item.photoId ? 'i-lucide-image' : 'i-lucide-image-off'"
                     class="size-3.5 shrink-0"
-                    :class="order.photos.some((p: OrderPhoto) => p.filename === name && p.linked) ? 'text-success' : 'text-muted'"
+                    :class="item.photoId ? 'text-success' : 'text-muted'"
                   />
-                  <span class="truncate">{{ name }}</span>
+                  <div class="min-w-0">
+                    <span class="truncate block">{{ item.filename }}</span>
+                    <span v-if="item.collectionName" class="text-[10px] text-muted truncate block">{{ item.collectionName }}</span>
+                    <span v-else class="text-[10px] text-muted/50 italic block">Liaison différée</span>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -502,12 +631,12 @@ async function saveEdit() {
             <!-- Summary -->
             <div class="text-xs text-muted space-y-0.5">
               <p>
-                {{ editFilenames.length }} photo{{ editFilenames.length !== 1 ? 's' : '' }}
-                <span v-if="editFilenames.length > 0"> — {{ editTotalEuros }} €</span>
+                {{ editPhotoItems.length }} photo{{ editPhotoItems.length !== 1 ? 's' : '' }}
+                <span v-if="editPhotoItems.length > 0"> — {{ editTotalEuros }} €</span>
               </p>
-              <p v-if="selectedFormula && editFilenames.length > selectedFormula.digitalPhotosCount && selectedFormula.extraPhotoPriceCents != null">
-                dont {{ editFilenames.length - selectedFormula.digitalPhotosCount }} supplémentaire{{ editFilenames.length - selectedFormula.digitalPhotosCount !== 1 ? 's' : '' }}
-                (+{{ (((editFilenames.length - selectedFormula.digitalPhotosCount) * selectedFormula.extraPhotoPriceCents) / 100).toFixed(2) }} €)
+              <p v-if="selectedFormula && editPhotoItems.length > selectedFormula.digitalPhotosCount && selectedFormula.extraPhotoPriceCents != null">
+                dont {{ editPhotoItems.length - selectedFormula.digitalPhotosCount }} supplémentaire{{ editPhotoItems.length - selectedFormula.digitalPhotosCount !== 1 ? 's' : '' }}
+                (+{{ (((editPhotoItems.length - selectedFormula.digitalPhotosCount) * selectedFormula.extraPhotoPriceCents) / 100).toFixed(2) }} €)
               </p>
             </div>
           </div>

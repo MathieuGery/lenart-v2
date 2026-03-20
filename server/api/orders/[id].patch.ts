@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { eq, and, isNull } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { orders, orderItems, photos, pricingFormulas } from '~~/server/database/schema'
 import { db } from '~~/server/utils/db'
 import { getPhotoPriceCents } from '~~/server/utils/settings'
@@ -12,6 +12,7 @@ const bodySchema = z.object({
   lastName: z.string().min(1).max(255).optional(),
   email: z.string().email().optional(),
   formulaId: z.string().uuid().nullable().optional(),
+  photoIds: z.array(z.string().uuid()).max(100).optional(),
   photoFilenames: z.array(z.string().min(1).max(255)).optional(),
   amazonLink: z.string().url().max(1000).nullable().optional()
 })
@@ -34,8 +35,21 @@ export default defineEventHandler(async (event) => {
   if (body.amazonLink !== undefined) orderUpdate.amazonLink = body.amazonLink
 
   // Handle formula + photos change
-  if (body.photoFilenames !== undefined) {
-    const filenames = body.photoFilenames
+  const hasPhotoChanges = body.photoIds !== undefined || body.photoFilenames !== undefined
+  if (hasPhotoChanges) {
+    const linkedPhotoIds = body.photoIds ?? []
+    const filenames = body.photoFilenames ?? []
+    const totalItems = linkedPhotoIds.length + filenames.length
+
+    // Validate linked photos
+    if (linkedPhotoIds.length > 0) {
+      const foundPhotos = await db.select({ id: photos.id, filename: photos.filename })
+        .from(photos)
+        .where(inArray(photos.id, linkedPhotoIds))
+      if (foundPhotos.length !== linkedPhotoIds.length) {
+        throw createError({ statusCode: 400, message: 'Certaines photos sont introuvables' })
+      }
+    }
 
     // Resolve formula for pricing
     let totalCents: number
@@ -49,73 +63,62 @@ export default defineEventHandler(async (event) => {
         if (!formula?.isActive) {
           throw createError({ statusCode: 400, message: 'Formule introuvable ou inactive' })
         }
-        const extra = Math.max(0, filenames.length - formula.digitalPhotosCount)
+        const extra = Math.max(0, totalItems - formula.digitalPhotosCount)
         const extraCost = formula.extraPhotoPriceCents != null
           ? extra * formula.extraPhotoPriceCents
           : 0
         totalCents = formula.basePriceCents + extraCost
-        priceCentsPerItem = filenames.length > 0 ? Math.round(totalCents / filenames.length) : 0
+        priceCentsPerItem = totalItems > 0 ? Math.round(totalCents / totalItems) : 0
         formulaName = formula.name
       } else {
         // No formula
         priceCentsPerItem = await getPhotoPriceCents()
-        totalCents = filenames.length * priceCentsPerItem
+        totalCents = totalItems * priceCentsPerItem
         formulaName = null
       }
     } else {
       // Keep existing formula pricing logic — recalculate with new count
       priceCentsPerItem = await getPhotoPriceCents()
-      totalCents = filenames.length * priceCentsPerItem
+      totalCents = totalItems * priceCentsPerItem
     }
 
     orderUpdate.totalCents = totalCents
     orderUpdate.formulaName = formulaName
 
-    // Get existing items to preserve photo links
-    const existingItems = await db.select({
-      id: orderItems.id,
-      photoId: orderItems.photoId,
-      photoFilename: orderItems.photoFilename
-    }).from(orderItems).where(eq(orderItems.orderId, id))
-
-    // Build a map of filename -> existing photoId (to preserve links)
-    const linkedMap = new Map<string, string>()
-    for (const item of existingItems) {
-      if (item.photoFilename && item.photoId) {
-        linkedMap.set(item.photoFilename, item.photoId)
-      }
-    }
-
     // Delete all existing items and re-insert
     await db.delete(orderItems).where(eq(orderItems.orderId, id))
 
-    if (filenames.length > 0) {
-      const newItems = filenames.map(filename => ({
+    const itemValues = []
+
+    // Insert items for linked photos
+    if (linkedPhotoIds.length > 0) {
+      const foundPhotos = await db.select({ id: photos.id, filename: photos.filename })
+        .from(photos)
+        .where(inArray(photos.id, linkedPhotoIds))
+      const filenameMap = Object.fromEntries(foundPhotos.map(p => [p.id, p.filename]))
+
+      for (const photoId of linkedPhotoIds) {
+        itemValues.push({
+          orderId: id,
+          photoId,
+          photoFilename: filenameMap[photoId] ?? null,
+          priceCents: priceCentsPerItem
+        })
+      }
+    }
+
+    // Insert items for deferred filenames
+    for (const filename of filenames) {
+      itemValues.push({
         orderId: id,
-        photoId: linkedMap.get(filename) ?? null,
+        photoId: null,
         photoFilename: filename,
         priceCents: priceCentsPerItem
-      }))
-      await db.insert(orderItems).values(newItems)
+      })
+    }
 
-      // Try to auto-link any unlinked items
-      for (const item of newItems) {
-        if (!item.photoId && item.photoFilename) {
-          const [photo] = await db.select({ id: photos.id })
-            .from(photos)
-            .where(eq(photos.filename, item.photoFilename))
-            .limit(1)
-          if (photo) {
-            await db.update(orderItems)
-              .set({ photoId: photo.id })
-              .where(and(
-                eq(orderItems.orderId, id),
-                eq(orderItems.photoFilename, item.photoFilename),
-                isNull(orderItems.photoId)
-              ))
-          }
-        }
-      }
+    if (itemValues.length > 0) {
+      await db.insert(orderItems).values(itemValues)
     }
   } else if (body.formulaId !== undefined) {
     // Formula changed but photos not — just update formula name

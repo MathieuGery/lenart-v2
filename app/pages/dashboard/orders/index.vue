@@ -32,10 +32,84 @@ const form = reactive({
   terminalId: '',
   formulaId: '' as string
 })
-const photoFilenames = ref<string[]>([])
+interface PhotoItem {
+  filename: string
+  photoId: string | null
+  collectionName: string | null
+}
+
+const photoItems = ref<PhotoItem[]>([])
 const filenameInput = ref('')
 const creating = ref(false)
 const createdCheckoutUrl = ref<string | null>(null)
+
+// Photo search
+const searchResults = ref<{ id: string, filename: string, collectionId: string, collectionName: string }[]>([])
+const showDropdown = ref(false)
+const selectedCollectionId = ref<string | undefined>(undefined)
+let searchTimeout: ReturnType<typeof setTimeout> | null = null
+
+// Collections for filter
+const { data: collectionsData } = await useFetch<CollectionListItem[]>('/api/collections')
+
+const collectionOptions = computed(() => [
+  'Toutes les collections',
+  ...(collectionsData.value ?? []).map(c => c.name)
+])
+
+const selectedCollectionLabel = ref('Toutes les collections')
+
+watch(selectedCollectionLabel, (label) => {
+  const c = collectionsData.value?.find(c => c.name === label)
+  selectedCollectionId.value = c?.id
+})
+
+async function searchPhotos(query: string) {
+  if (query.trim().length < 2) {
+    searchResults.value = []
+    showDropdown.value = false
+    return
+  }
+  try {
+    const params: Record<string, string> = { q: query.trim() }
+    if (selectedCollectionId.value) params.collectionId = selectedCollectionId.value
+    searchResults.value = await $fetch('/api/photos/search', { params })
+    showDropdown.value = true
+  } catch {
+    searchResults.value = []
+  }
+}
+
+// Debounced search on input change
+watch(filenameInput, (val) => {
+  if (searchTimeout) clearTimeout(searchTimeout)
+  if (val.trim().length < 2) {
+    searchResults.value = []
+    showDropdown.value = false
+    return
+  }
+  searchTimeout = setTimeout(() => searchPhotos(val), 300)
+})
+
+function selectPhoto(result: { id: string, filename: string, collectionName: string }) {
+  if (photoItems.value.some(p => p.photoId === result.id)) return
+  if (!canAddMore.value) return
+  photoItems.value.push({
+    filename: result.filename,
+    photoId: result.id,
+    collectionName: result.collectionName
+  })
+  filenameInput.value = ''
+  searchResults.value = []
+  showDropdown.value = false
+}
+
+function hideDropdown() {
+  setTimeout(() => { showDropdown.value = false }, 200)
+}
+
+// Backward compat
+const photoFilenames = computed(() => photoItems.value.map(p => p.filename))
 
 // Formulas
 const { data: formulas } = await useFetch<PricingFormula[]>('/api/public/pricing')
@@ -53,12 +127,12 @@ const maxPhotos = computed(() => {
   return f.digitalPhotosCount // pas de supplément = limité au nombre inclus
 })
 
-const canAddMore = computed(() => photoFilenames.value.length < maxPhotos.value)
+const canAddMore = computed(() => photoItems.value.length < maxPhotos.value)
 
-// Trim filenames when switching to a more restrictive formula
+// Trim items when switching to a more restrictive formula
 watch(() => form.formulaId, () => {
-  if (photoFilenames.value.length > maxPhotos.value) {
-    photoFilenames.value.splice(maxPhotos.value)
+  if (photoItems.value.length > maxPhotos.value) {
+    photoItems.value.splice(maxPhotos.value)
   }
 })
 
@@ -66,14 +140,16 @@ function addFilename() {
   let name = filenameInput.value.trim()
   if (!name || !canAddMore.value) return
   if (!/\.\w+$/.test(name)) name += '.jpg'
-  if (!photoFilenames.value.includes(name)) {
-    photoFilenames.value.push(name)
+  if (!photoItems.value.some(p => p.filename === name)) {
+    photoItems.value.push({ filename: name, photoId: null, collectionName: null })
   }
   filenameInput.value = ''
+  searchResults.value = []
+  showDropdown.value = false
 }
 
 function removeFilename(index: number) {
-  photoFilenames.value.splice(index, 1)
+  photoItems.value.splice(index, 1)
 }
 
 // Terminals
@@ -86,8 +162,12 @@ function openModal() {
   form.paymentMethod = 'link'
   form.terminalId = ''
   form.formulaId = ''
-  photoFilenames.value = []
+  photoItems.value = []
   filenameInput.value = ''
+  searchResults.value = []
+  showDropdown.value = false
+  selectedCollectionId.value = undefined
+  selectedCollectionLabel.value = 'Toutes les collections'
   step.value = 'info'
   emailTouched.value = false
   createdCheckoutUrl.value = null
@@ -98,7 +178,7 @@ function openModal() {
 const { data: appSettings } = await useFetch<Record<string, string>>('/api/settings')
 
 const totalEuros = computed(() => {
-  const count = photoFilenames.value.length
+  const count = photoItems.value.length
   if (count === 0) return '0.00'
   if (form.formulaId) {
     const f = formulas.value?.find(f => f.id === form.formulaId)
@@ -115,13 +195,17 @@ const totalEuros = computed(() => {
 async function createOrder() {
   creating.value = true
   try {
+    const linkedIds = photoItems.value.filter(p => p.photoId).map(p => p.photoId!)
+    const unlinkedFilenames = photoItems.value.filter(p => !p.photoId).map(p => p.filename)
+
     const result = await $fetch<{ orderId: string, checkoutUrl: string | null }>('/api/orders', {
       method: 'POST',
       body: {
         firstName: form.firstName,
         lastName: form.lastName,
         email: form.email,
-        photoFilenames: photoFilenames.value,
+        photoIds: linkedIds.length ? linkedIds : undefined,
+        photoFilenames: unlinkedFilenames.length ? unlinkedFilenames : undefined,
         formulaId: form.formulaId || undefined,
         paymentMethod: form.paymentMethod,
         terminalId: form.terminalId || undefined
@@ -153,7 +237,7 @@ const emailTouched = ref(false)
 
 function canAdvance(s: typeof step.value) {
   if (s === 'info') return form.firstName && form.lastName && form.email && emailValid.value
-  if (s === 'photos') return photoFilenames.value.length > 0
+  if (s === 'photos') return photoItems.value.length > 0
   return true
 }
 
@@ -562,52 +646,99 @@ const filteredOrders = computed(() => {
               </p>
             </div>
 
-            <!-- Filename input -->
+            <!-- Photo search -->
             <div class="space-y-2">
               <div class="flex items-center justify-between">
-                <label class="text-sm font-medium">Noms des photos</label>
+                <label class="text-sm font-medium">Photos</label>
                 <span v-if="maxPhotos !== Infinity" class="text-xs text-muted tabular-nums">
-                  {{ photoFilenames.length }} / {{ maxPhotos }}
+                  {{ photoItems.length }} / {{ maxPhotos }}
                 </span>
               </div>
-              <form class="flex gap-2" @submit.prevent="addFilename">
-                <UInput
-                  v-model="filenameInput"
-                  placeholder="IMG_1234.jpg"
-                  size="sm"
-                  color="neutral"
-                  class="flex-1"
-                  :disabled="!canAddMore"
-                  @keydown.enter.prevent="addFilename"
-                />
-                <UButton
-                  type="submit"
-                  icon="i-lucide-plus"
-                  color="neutral"
-                  size="sm"
-                  :disabled="!filenameInput.trim() || !canAddMore"
+
+              <!-- Collection filter -->
+              <USelect
+                v-model="selectedCollectionLabel"
+                :items="collectionOptions"
+                size="sm"
+                color="neutral"
+                class="w-full"
+              />
+
+              <!-- Search input -->
+              <div class="relative">
+                <form class="flex gap-2" @submit.prevent="addFilename">
+                  <UInput
+                    v-model="filenameInput"
+                    placeholder="Rechercher ou saisir un nom de photo…"
+                    size="sm"
+                    color="neutral"
+                    class="flex-1"
+                    :disabled="!canAddMore"
+                    @focus="filenameInput.trim().length >= 2 && (showDropdown = true)"
+                    @blur="hideDropdown"
+                    @keydown.enter.prevent="addFilename"
+                  />
+                  <UButton
+                    type="submit"
+                    icon="i-lucide-plus"
+                    color="neutral"
+                    size="sm"
+                    :disabled="!filenameInput.trim() || !canAddMore"
+                  >
+                    Ajouter
+                  </UButton>
+                </form>
+
+                <!-- Search dropdown -->
+                <div
+                  v-if="showDropdown && searchResults.length"
+                  class="absolute left-0 right-12 top-full mt-1 z-50 border border-default rounded-lg bg-default shadow-lg max-h-48 overflow-y-auto"
                 >
-                  Ajouter
-                </UButton>
-              </form>
+                  <button
+                    v-for="result in searchResults"
+                    :key="result.id"
+                    type="button"
+                    class="w-full flex items-center gap-3 px-3 py-2 text-left text-sm hover:bg-elevated/50 transition-colors"
+                    :class="{ 'opacity-40 cursor-not-allowed': photoItems.some(p => p.photoId === result.id) }"
+                    :disabled="photoItems.some(p => p.photoId === result.id)"
+                    @mousedown.prevent="selectPhoto(result)"
+                  >
+                    <UIcon name="i-lucide-image" class="size-3.5 text-success shrink-0" />
+                    <div class="min-w-0 flex-1">
+                      <p class="truncate">{{ result.filename }}</p>
+                      <p class="text-[10px] text-muted truncate">{{ result.collectionName }}</p>
+                    </div>
+                    <UIcon v-if="photoItems.some(p => p.photoId === result.id)" name="i-lucide-check" class="size-3.5 text-success shrink-0" />
+                  </button>
+                </div>
+              </div>
+
               <p v-if="!canAddMore" class="text-xs text-warning">
                 Nombre maximum de photos atteint pour cette formule.
               </p>
               <p v-else class="text-xs text-muted">
-                Les photos seront liées automatiquement lors de l'upload dans une collection.
+                Sélectionnez une photo existante ou tapez un nom pour une liaison différée.
               </p>
             </div>
 
-            <!-- Filename list -->
-            <div v-if="photoFilenames.length" class="space-y-1 max-h-60 overflow-y-auto">
+            <!-- Photo list -->
+            <div v-if="photoItems.length" class="space-y-1 max-h-60 overflow-y-auto">
               <div
-                v-for="(name, idx) in photoFilenames"
+                v-for="(item, idx) in photoItems"
                 :key="idx"
                 class="flex items-center justify-between px-3 py-2 rounded-lg border border-default text-sm"
               >
                 <div class="flex items-center gap-2 min-w-0">
-                  <UIcon name="i-lucide-image" class="size-3.5 text-muted shrink-0" />
-                  <span class="truncate">{{ name }}</span>
+                  <UIcon
+                    :name="item.photoId ? 'i-lucide-image' : 'i-lucide-image-off'"
+                    class="size-3.5 shrink-0"
+                    :class="item.photoId ? 'text-success' : 'text-muted'"
+                  />
+                  <div class="min-w-0">
+                    <span class="truncate block">{{ item.filename }}</span>
+                    <span v-if="item.collectionName" class="text-[10px] text-muted truncate block">{{ item.collectionName }}</span>
+                    <span v-else class="text-[10px] text-muted/50 italic block">Liaison différée</span>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -622,12 +753,12 @@ const filteredOrders = computed(() => {
             <!-- Summary -->
             <div class="text-xs text-muted space-y-0.5">
               <p>
-                {{ photoFilenames.length }} photo{{ photoFilenames.length !== 1 ? 's' : '' }}
-                <span v-if="photoFilenames.length > 0"> — {{ totalEuros }} €</span>
+                {{ photoItems.length }} photo{{ photoItems.length !== 1 ? 's' : '' }}
+                <span v-if="photoItems.length > 0"> — {{ totalEuros }} €</span>
               </p>
-              <p v-if="selectedFormula && photoFilenames.length > selectedFormula.digitalPhotosCount && selectedFormula.extraPhotoPriceCents != null">
-                dont {{ photoFilenames.length - selectedFormula.digitalPhotosCount }} supplémentaire{{ photoFilenames.length - selectedFormula.digitalPhotosCount !== 1 ? 's' : '' }}
-                (+{{ (((photoFilenames.length - selectedFormula.digitalPhotosCount) * selectedFormula.extraPhotoPriceCents) / 100).toFixed(2) }} €)
+              <p v-if="selectedFormula && photoItems.length > selectedFormula.digitalPhotosCount && selectedFormula.extraPhotoPriceCents != null">
+                dont {{ photoItems.length - selectedFormula.digitalPhotosCount }} supplémentaire{{ photoItems.length - selectedFormula.digitalPhotosCount !== 1 ? 's' : '' }}
+                (+{{ (((photoItems.length - selectedFormula.digitalPhotosCount) * selectedFormula.extraPhotoPriceCents) / 100).toFixed(2) }} €)
               </p>
             </div>
           </div>

@@ -101,27 +101,14 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  // Insert order items for filenames — try to link to existing photos
-  if (filenames.length > 0) {
-    const existingPhotos = await db.select({ id: photos.id, filename: photos.filename })
-      .from(photos)
-      .where(inArray(photos.filename, filenames))
-
-    const filenameToPhotoId = new Map<string, string>()
-    for (const p of existingPhotos) {
-      if (!filenameToPhotoId.has(p.filename)) {
-        filenameToPhotoId.set(p.filename, p.id)
-      }
-    }
-
-    for (const filename of filenames) {
-      itemValues.push({
-        orderId: order.id,
-        photoId: filenameToPhotoId.get(filename) ?? null,
-        photoFilename: filename,
-        priceCents: priceCentsPerItem
-      })
-    }
+  // Insert order items for filenames (deferred linking — resolved on photo upload)
+  for (const filename of filenames) {
+    itemValues.push({
+      orderId: order.id,
+      photoId: null,
+      photoFilename: filename,
+      priceCents: priceCentsPerItem
+    })
   }
 
   if (itemValues.length > 0) {
