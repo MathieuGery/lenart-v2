@@ -14,8 +14,13 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, message: 'Photo introuvable' })
   }
 
+  try {
+    await db.delete(photos).where(eq(photos.id, id))
+  } catch {
+    throw createError({ statusCode: 409, message: 'Cette photo est liée à une commande et ne peut pas être supprimée' })
+  }
+
   await blobDelete(photo.key)
-  await db.delete(photos).where(eq(photos.id, id))
 
   return { deleted: id }
 })

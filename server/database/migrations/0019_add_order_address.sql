@@ -1,4 +1,4 @@
-ALTER TABLE "orders" ADD COLUMN "address" varchar(500);
-ALTER TABLE "orders" ADD COLUMN "city" varchar(255);
-ALTER TABLE "orders" ADD COLUMN "postal_code" varchar(20);
-ALTER TABLE "orders" ADD COLUMN "country" varchar(255);
+ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "address" varchar(500);
+ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "city" varchar(255);
+ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "postal_code" varchar(20);
+ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "country" varchar(255);

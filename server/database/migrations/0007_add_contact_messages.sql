@@ -1,4 +1,4 @@
-CREATE TABLE "contact_messages" (
+CREATE TABLE IF NOT EXISTS "contact_messages" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
   "name" varchar(255) NOT NULL,
   "email" varchar(255) NOT NULL,

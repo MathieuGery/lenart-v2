@@ -9,11 +9,15 @@ export default defineEventHandler(async (event) => {
     .from(photos)
     .where(eq(photos.collectionId, id))
 
+  try {
+    await db.delete(collections).where(eq(collections.id, id))
+  } catch {
+    throw createError({ statusCode: 409, message: 'Cette collection contient des photos liées à des commandes et ne peut pas être supprimée' })
+  }
+
   for (const photo of collectionPhotos) {
     await blobDelete(photo.key)
   }
-
-  await db.delete(collections).where(eq(collections.id, id))
 
   return { deleted: id }
 })

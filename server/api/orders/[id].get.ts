@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { orders, orderItems, photos } from '~~/server/database/schema'
+import { orders, orderItems, photos, collections } from '~~/server/database/schema'
 import { db } from '~~/server/utils/db'
 
 export default defineEventHandler(async (event) => {
@@ -19,18 +19,21 @@ export default defineEventHandler(async (event) => {
       itemId: orderItems.id,
       photoId: orderItems.photoId,
       photoFilename: orderItems.photoFilename,
-      photo: photos
+      photo: photos,
+      collectionName: collections.name
     })
     .from(orderItems)
     .leftJoin(photos, eq(orderItems.photoId, photos.id))
+    .leftJoin(collections, eq(photos.collectionId, collections.id))
     .where(eq(orderItems.orderId, order.id))
 
   const orderPhotos = await Promise.all(
-    items.map(async ({ itemId, photoId, photoFilename, photo }) => ({
+    items.map(async ({ itemId, photoId, photoFilename, photo, collectionName }) => ({
       itemId,
       id: photoId,
       filename: photo?.filename ?? photoFilename,
       linked: !!photoId,
+      collectionName: collectionName ?? null,
       url: photo ? await blobPresignedUrl(photo.key) : null
     }))
   )

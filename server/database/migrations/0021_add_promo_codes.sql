@@ -1,6 +1,9 @@
-CREATE TYPE "public"."promo_code_type" AS ENUM ('percentage', 'fixed');
-
-CREATE TABLE "promo_codes" (
+DO $$ BEGIN
+  CREATE TYPE "public"."promo_code_type" AS ENUM ('percentage', 'fixed');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "promo_codes" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
   "code" varchar(50) NOT NULL UNIQUE,
   "type" "promo_code_type" NOT NULL,
@@ -12,6 +15,7 @@ CREATE TABLE "promo_codes" (
   "created_at" timestamp DEFAULT now() NOT NULL,
   "updated_at" timestamp DEFAULT now() NOT NULL
 );
-
-ALTER TABLE "orders" ADD COLUMN "promo_code" varchar(50);
-ALTER TABLE "orders" ADD COLUMN "discount_cents" integer NOT NULL DEFAULT 0;
+--> statement-breakpoint
+ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "promo_code" varchar(50);
+--> statement-breakpoint
+ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "discount_cents" integer NOT NULL DEFAULT 0;

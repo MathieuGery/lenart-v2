@@ -308,8 +308,8 @@ async function saveEdit() {
                 {{ order.photos.filter((p: OrderPhoto) => !p.linked).length }} en attente de liaison
               </UBadge>
             </div>
-            <div v-if="order.photos.length" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-              <template v-for="photo in order.photos" :key="photo.itemId">
+            <div v-if="order.photos.length" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              <div v-for="photo in order.photos" :key="photo.itemId" class="space-y-1.5">
                 <a
                   v-if="photo.linked" :href="photo.url" target="_blank"
                   class="relative aspect-4/3 rounded overflow-hidden bg-muted/10 block group" :title="photo.filename"
@@ -325,9 +325,15 @@ async function saveEdit() {
                   :title="photo.filename"
                 >
                   <UIcon name="i-lucide-image-off" class="size-4 text-muted" />
-                  <span class="text-[9px] text-muted text-center px-1 leading-tight truncate max-w-full">{{ photo.filename }}</span>
                 </div>
-              </template>
+                <div class="px-0.5">
+                  <p class="text-xs truncate" :title="photo.filename">{{ photo.filename }}</p>
+                  <p v-if="photo.collectionName" class="text-[10px] text-muted truncate" :title="photo.collectionName">
+                    {{ photo.collectionName }}
+                  </p>
+                  <p v-else class="text-[10px] text-muted/50 italic">Non liée</p>
+                </div>
+              </div>
             </div>
             <p v-else class="text-sm text-muted">Aucune photo associée.</p>
           </div>

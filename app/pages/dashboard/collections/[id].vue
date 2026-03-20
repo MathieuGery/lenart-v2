@@ -164,8 +164,8 @@ async function deletePhoto(photoId: string) {
   try {
     await $fetch(`/api/photos/${photoId}`, { method: 'DELETE' })
     await refresh()
-  } catch {
-    toast.add({ title: 'Erreur lors de la suppression', color: 'error' })
+  } catch (err: any) {
+    toast.add({ title: err?.data?.message || 'Erreur lors de la suppression', color: 'error' })
   }
 }
 

@@ -30,8 +30,8 @@ async function deleteCollection(id: string) {
     await $fetch(`/api/collections/${id}`, { method: 'DELETE' })
     await refresh()
     toast.add({ title: 'Collection supprimée' })
-  } catch {
-    toast.add({ title: 'Erreur lors de la suppression', color: 'error' })
+  } catch (err: any) {
+    toast.add({ title: err?.data?.message || 'Erreur lors de la suppression', color: 'error' })
   }
 }
 </script>

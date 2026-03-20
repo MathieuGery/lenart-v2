@@ -1,4 +1,4 @@
-CREATE TABLE "orders" (
+CREATE TABLE IF NOT EXISTS "orders" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
   "email" varchar(255) NOT NULL,
   "first_name" varchar(255) NOT NULL,
@@ -10,7 +10,7 @@ CREATE TABLE "orders" (
   "updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "order_items" (
+CREATE TABLE IF NOT EXISTS "order_items" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
   "order_id" uuid NOT NULL,
   "photo_id" uuid NOT NULL,
@@ -18,8 +18,14 @@ CREATE TABLE "order_items" (
   "created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "order_items" ADD CONSTRAINT "order_items_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE cascade ON UPDATE no action;
+DO $$ BEGIN
+  ALTER TABLE "order_items" ADD CONSTRAINT "order_items_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 --> statement-breakpoint
-ALTER TABLE "order_items" ADD CONSTRAINT "order_items_photo_id_photos_id_fk" FOREIGN KEY ("photo_id") REFERENCES "public"."photos"("id") ON DELETE restrict ON UPDATE no action;
+DO $$ BEGIN
+  ALTER TABLE "order_items" ADD CONSTRAINT "order_items_photo_id_photos_id_fk" FOREIGN KEY ("photo_id") REFERENCES "public"."photos"("id") ON DELETE restrict ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 --> statement-breakpoint
-CREATE INDEX "orders_mollie_payment_id_idx" ON "orders" ("mollie_payment_id");
+CREATE INDEX IF NOT EXISTS "orders_mollie_payment_id_idx" ON "orders" ("mollie_payment_id");

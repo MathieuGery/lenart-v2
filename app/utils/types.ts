@@ -95,6 +95,7 @@ export interface OrderPhoto {
   id: string | null
   filename: string | null
   linked: boolean
+  collectionName: string | null
   url: string | null
 }
 
