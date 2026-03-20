@@ -31,6 +31,15 @@ const links = [
           </nav>
 
           <div class="flex items-center gap-2">
+            <a href="https://www.instagram.com/len_._art" target="_blank" rel="noopener noreferrer">
+              <UButton
+                icon="i-lucide-instagram"
+                color="neutral"
+                variant="ghost"
+                size="sm"
+                square
+              />
+            </a>
             <UButton
               :icon="colorMode.value === 'dark' ? 'i-lucide-sun' : 'i-lucide-moon'"
               color="neutral"
@@ -75,7 +84,17 @@ const links = [
     <footer class="mt-auto">
       <div class="max-w-6xl mx-auto px-6 lg:px-8 py-12">
         <div class="flex flex-col md:flex-row items-center justify-between gap-4">
-          <span class="text-sm tracking-tight">Len-Art</span>
+          <div class="flex items-center gap-3">
+            <span class="text-sm tracking-tight">Len-Art</span>
+            <a
+              href="https://www.instagram.com/len_._art"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-muted hover:text-highlighted transition-colors"
+            >
+              <UIcon name="i-lucide-instagram" class="size-4" />
+            </a>
+          </div>
           <p class="text-xs text-muted">
             &copy; {{ new Date().getFullYear() }} Len-Art — Tous droits réservés
           </p>
