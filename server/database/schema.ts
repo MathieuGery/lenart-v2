@@ -110,6 +110,17 @@ export const promoCodes = pgTable('promo_codes', {
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 })
 
+export const galleries = pgTable('galleries', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  title: varchar('title', { length: 255 }).notNull(),
+  code: varchar('code', { length: 100 }).notNull(),
+  link: varchar('link', { length: 1000 }).notNull(),
+  date: varchar('date', { length: 20 }),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => [
+  index('galleries_code_idx').on(table.code)
+])
+
 export const pricingFormulaFeatures = pgTable('pricing_formula_features', {
   id: uuid('id').defaultRandom().primaryKey(),
   formulaId: uuid('formula_id').notNull().references(() => pricingFormulas.id, { onDelete: 'cascade' }),

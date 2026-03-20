@@ -4,6 +4,7 @@ const cart = useCart()
 
 const links = [
   { label: 'Concours', to: '/concours' },
+  { label: 'Galeries', to: '/galeries' },
   { label: 'À propos', to: '/about' },
   { label: 'Contact', to: '/contact' }
 ]

@@ -27,6 +27,14 @@ const links = [[{
   }
 },
 {
+  label: 'Galeries',
+  icon: 'i-lucide-lock',
+  to: '/dashboard/galleries',
+  onSelect: () => {
+    open.value = false
+  }
+},
+{
   label: 'Codes promo',
   icon: 'i-lucide-ticket-percent',
   to: '/dashboard/promo-codes',

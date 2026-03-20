@@ -146,6 +146,22 @@ export interface PromoCode {
   updatedAt: string
 }
 
+// Galleries
+export interface Gallery {
+  id: string
+  title: string
+  code: string
+  link: string
+  date: string | null
+  createdAt: string
+}
+
+export interface PublicGalleryItem {
+  title: string
+  link: string
+  date: string | null
+}
+
 export interface PricingFormula {
   id: string
   name: string
