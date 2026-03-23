@@ -365,6 +365,41 @@ async function submitOrder() {
                     </template>
                   </div>
 
+                  <!-- Payment method (hidden for free orders) -->
+                  <template v-if="finalTotalCents > 0">
+                    <div class="space-y-2">
+                      <p class="text-xs font-medium">
+                        Mode de paiement
+                      </p>
+                      <div class="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          class="flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border-2 transition-colors text-sm"
+                          :class="form.paymentMethod === 'online' ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
+                          @click="form.paymentMethod = 'online'"
+                        >
+                          <UIcon name="i-lucide-credit-card" class="size-4" />
+                          <span class="font-medium text-xs">En ligne</span>
+                          <span class="text-[10px] text-muted text-center leading-tight">Paiement sécurisé Mollie</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border-2 transition-colors text-sm"
+                          :class="form.paymentMethod === 'cash' ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
+                          @click="form.paymentMethod = 'cash'"
+                        >
+                          <UIcon name="i-lucide-banknote" class="size-4" />
+                          <span class="font-medium text-xs">Espèces</span>
+                          <span class="text-[10px] text-muted text-center leading-tight">Paiement au stand</span>
+                        </button>
+                      </div>
+                    </div>
+                  </template>
+                  <div v-else class="rounded-lg bg-green-500/5 border border-green-500/20 px-4 py-3 text-sm text-center">
+                    <UIcon name="i-lucide-gift" class="size-4 text-green-600 dark:text-green-400 inline mr-1" />
+                    Commande offerte — aucun paiement requis
+                  </div>
+
                   <div class="grid grid-cols-2 gap-3">
                     <div class="space-y-1.5">
                       <label class="text-xs font-medium">Prénom</label>
@@ -448,41 +483,6 @@ async function submitOrder() {
                       >
                     </div>
                   </template>
-
-                  <!-- Payment method (hidden for free orders) -->
-                  <template v-if="finalTotalCents > 0">
-                    <div class="space-y-2">
-                      <p class="text-xs font-medium">
-                        Mode de paiement
-                      </p>
-                      <div class="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          class="flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border-2 transition-colors text-sm"
-                          :class="form.paymentMethod === 'online' ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
-                          @click="form.paymentMethod = 'online'"
-                        >
-                          <UIcon name="i-lucide-credit-card" class="size-4" />
-                          <span class="font-medium text-xs">En ligne</span>
-                          <span class="text-[10px] text-muted text-center leading-tight">Paiement sécurisé Mollie</span>
-                        </button>
-                        <button
-                          type="button"
-                          class="flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border-2 transition-colors text-sm"
-                          :class="form.paymentMethod === 'cash' ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
-                          @click="form.paymentMethod = 'cash'"
-                        >
-                          <UIcon name="i-lucide-banknote" class="size-4" />
-                          <span class="font-medium text-xs">Espèces</span>
-                          <span class="text-[10px] text-muted text-center leading-tight">Paiement au stand</span>
-                        </button>
-                      </div>
-                    </div>
-                  </template>
-                  <div v-else class="rounded-lg bg-green-500/5 border border-green-500/20 px-4 py-3 text-sm text-center">
-                    <UIcon name="i-lucide-gift" class="size-4 text-green-600 dark:text-green-400 inline mr-1" />
-                    Commande offerte — aucun paiement requis
-                  </div>
 
                   <p
                     v-if="error"

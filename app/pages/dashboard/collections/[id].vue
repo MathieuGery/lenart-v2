@@ -38,17 +38,18 @@ const isUploading = computed(() => uploadQueue.value.some((u: UploadItem) => ['p
 const doneCount = computed(() => uploadQueue.value.filter((u: UploadItem) => u.status === 'done').length)
 const uploadPanelCollapsed = ref(false)
 
-// Global progress: weighted by file size across all items
+// Global progress: count-based (completed / total)
 const globalProgress = computed(() => {
   const items = uploadQueue.value
   if (!items.length) return 0
-  const totalSize = items.reduce((s, i) => s + i.size, 0)
-  if (totalSize === 0) return 0
-  const weightedProgress = items.reduce((s, i) => {
-    const pct = ['done', 'duplicate'].includes(i.status) ? 100 : i.status === 'error' ? 0 : i.progress
-    return s + (pct / 100) * i.size
-  }, 0)
-  return Math.round((weightedProgress / totalSize) * 100)
+  const finished = items.filter(i => ['done', 'duplicate', 'error'].includes(i.status)).length
+  return Math.round((finished / items.length) * 100)
+})
+
+// Sorted queue: active items first, then pending, then finished
+const sortedQueue = computed(() => {
+  const order: Record<string, number> = { converting: 0, uploading: 1, pending: 2, done: 3, duplicate: 4, error: 5 }
+  return [...uploadQueue.value].sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9))
 })
 
 const globalSpeed = computed(() => {
@@ -485,7 +486,7 @@ function formatSpeed(bytesPerSec: number) {
       <!-- File list -->
       <div v-if="!uploadPanelCollapsed" class="divide-y divide-default max-h-52 overflow-y-auto">
         <div
-          v-for="item in uploadQueue"
+          v-for="item in sortedQueue"
           :key="item.id"
           class="px-4 py-2 flex items-center gap-3"
         >
