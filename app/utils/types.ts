@@ -115,6 +115,7 @@ export interface OrderDetail {
   discountCents: number
   status: string
   businessStatus: string
+  photosEmailSentAt: string | null
   cashPayment: boolean
   totalCents: number
   formulaName: string | null

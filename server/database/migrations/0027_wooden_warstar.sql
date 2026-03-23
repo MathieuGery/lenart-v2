@@ -1,0 +1,1 @@
+ALTER TABLE "orders" ADD COLUMN "photos_email_sent_at" timestamp;

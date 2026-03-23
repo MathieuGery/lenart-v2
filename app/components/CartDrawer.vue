@@ -531,6 +531,12 @@ async function submitOrder() {
                 <p v-if="!confirmedFree" class="text-sm text-muted">
                   Rendez-vous au stand pour régler en espèces et récupérer vos photos.
                 </p>
+                <div class="mt-5 flex items-start gap-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-left">
+                  <UIcon name="i-lucide-mail-warning" class="size-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <p class="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
+                    Un e-mail de confirmation vous a été envoyé. <strong>Pensez à vérifier vos spams</strong> si vous ne le trouvez pas dans votre boîte de réception.
+                  </p>
+                </div>
                 <p v-if="confirmedOrderId" class="mt-4 text-xs text-muted/60 font-mono">
                   Réf. {{ confirmedOrderId.slice(0, 8).toUpperCase() }}
                 </p>

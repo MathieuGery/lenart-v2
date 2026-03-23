@@ -119,6 +119,24 @@ export default defineEventHandler(async (event) => {
     await db.insert(orderItems).values(itemValues)
   }
 
+  // Collect all filenames for the email
+  const allFilenames = itemValues
+    .map(i => i.photoFilename)
+    .filter((f): f is string => !!f)
+
+  // Send confirmation email (non-blocking)
+  sendOrderConfirmationEmail({
+    to: body.email,
+    firstName: body.firstName,
+    orderId: order.id,
+    photoCount: totalItems,
+    totalCents,
+    formulaName: formulaName ?? null,
+    filenames: allFilenames,
+    cashPayment: body.paymentMethod === 'cash',
+    isFree: false
+  }).catch(() => {})
+
   // Cash payment — no Mollie involved
   if (body.paymentMethod === 'cash') {
     return { orderId: order.id, checkoutUrl: null }

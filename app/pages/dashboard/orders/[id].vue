@@ -56,6 +56,26 @@ async function updateStatus() {
   }
 }
 
+// Send photos ready email
+const sendingEmail = ref(false)
+
+const canSendPhotosEmail = computed(() =>
+  order.value?.businessStatus === 'completed' && !!order.value?.amazonLink
+)
+
+async function sendPhotosEmail() {
+  sendingEmail.value = true
+  try {
+    await $fetch(`/api/orders/${id}/send-photos-email`, { method: 'POST' })
+    await refresh()
+    toast.add({ title: 'E-mail envoyé au client', color: 'success' })
+  } catch (e: unknown) {
+    toast.add({ title: (e as { data?: { message?: string } })?.data?.message ?? 'Erreur lors de l\'envoi', color: 'error' })
+  } finally {
+    sendingEmail.value = false
+  }
+}
+
 async function toggleBusinessStatus() {
   updatingBusiness.value = true
   try {
@@ -358,15 +378,15 @@ async function saveEdit() {
         <!-- ─── VIEW MODE ─── -->
         <template v-if="!editing">
           <!-- Header card -->
-          <div class="border border-default rounded-lg p-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-            <div>
+          <div class="border border-default rounded-lg p-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4">
+            <div class="lg:col-span-2">
               <p class="text-xs text-muted mb-1">
                 Client
               </p>
               <p class="text-sm font-medium">
                 {{ order.firstName }} {{ order.lastName }}
               </p>
-              <p class="text-xs text-muted">
+              <p class="text-xs text-muted truncate">
                 {{ order.email }}
               </p>
             </div>
@@ -572,6 +592,30 @@ async function saveEdit() {
                   square
                 />
               </a>
+            </div>
+
+            <!-- Send photos email button -->
+            <div class="mt-4 flex items-center gap-3">
+              <UButton
+                icon="i-lucide-send"
+                color="neutral"
+                size="sm"
+                :loading="sendingEmail"
+                :disabled="!canSendPhotosEmail"
+                @click="sendPhotosEmail"
+              >
+                {{ order.photosEmailSentAt ? 'Renvoyer l\'e-mail' : 'Envoyer l\'e-mail de téléchargement' }}
+              </UButton>
+              <div v-if="order.photosEmailSentAt" class="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
+                <UIcon name="i-lucide-check-circle" class="size-3.5" />
+                Envoyé le {{ new Date(order.photosEmailSentAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
+              </div>
+              <p v-else-if="!order.amazonLink" class="text-xs text-muted">
+                Ajoutez un lien pour activer l'envoi.
+              </p>
+              <p v-else-if="order.businessStatus !== 'completed'" class="text-xs text-muted">
+                La commande doit être marquée comme terminée.
+              </p>
             </div>
           </div>
 

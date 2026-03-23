@@ -52,6 +52,7 @@ export const orders = pgTable('orders', {
   cashPayment: boolean('cash_payment').notNull().default(false),
   status: orderStatusEnum('status').notNull().default('pending'),
   businessStatus: businessStatusEnum('business_status').notNull().default('in_progress'),
+  photosEmailSentAt: timestamp('photos_email_sent_at'),
   totalCents: integer('total_cents').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull()

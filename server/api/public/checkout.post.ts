@@ -24,7 +24,7 @@ export default defineEventHandler(async (event) => {
   const appUrl = config.appUrl as string
 
   // Validate photos exist
-  const foundPhotos = await db.select({ id: photos.id })
+  const foundPhotos = await db.select({ id: photos.id, filename: photos.filename })
     .from(photos)
     .where(inArray(photos.id, body.photoIds))
 
@@ -122,6 +122,19 @@ export default defineEventHandler(async (event) => {
   await db.insert(orderItems).values(
     body.photoIds.map(photoId => ({ orderId: order.id, photoId, priceCents: priceCentsPerItem }))
   )
+
+  // Send confirmation email (non-blocking)
+  sendOrderConfirmationEmail({
+    to: body.email,
+    firstName: body.firstName,
+    orderId: order.id,
+    photoCount: body.photoIds.length,
+    totalCents,
+    formulaName: formulaName ?? null,
+    filenames: foundPhotos.map(p => p.filename),
+    cashPayment: body.paymentMethod === 'cash',
+    isFree: isFreeOrder
+  }).catch(() => {})
 
   // Free order — no payment required
   if (isFreeOrder) {

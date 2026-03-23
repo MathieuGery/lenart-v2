@@ -62,6 +62,13 @@ watch(() => order.value?.status, (s) => {
             </div>
           </div>
 
+          <div class="flex items-start gap-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 px-4 py-3 mb-6">
+            <UIcon name="i-lucide-mail-warning" class="size-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <p class="text-sm text-amber-700 dark:text-amber-300 leading-relaxed">
+              Un e-mail de confirmation vous a été envoyé. <strong>Pensez à vérifier vos spams</strong> si vous ne le trouvez pas dans votre boîte de réception.
+            </p>
+          </div>
+
           <div class="rounded-lg border border-default p-5 mb-8 space-y-2 text-sm">
             <div class="flex justify-between">
               <span class="text-muted">Commande</span>
