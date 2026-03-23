@@ -1,0 +1,1 @@
+ALTER TABLE "order_items" ADD COLUMN IF NOT EXISTS "collection_id" uuid REFERENCES "collections"("id") ON DELETE SET NULL;

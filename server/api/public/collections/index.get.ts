@@ -21,6 +21,7 @@ export default defineEventHandler(async () => {
     })
     .from(collections)
     .leftJoin(photos, eq(photos.collectionId, collections.id))
+    .where(eq(collections.visible, true))
     .groupBy(collections.id)
     .orderBy(desc(collections.createdAt))
 

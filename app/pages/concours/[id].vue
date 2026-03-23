@@ -24,6 +24,19 @@ watch(() => collection.value?.photos, () => {
 const cart = useCart()
 const toast = useToast()
 
+// Mobile formula preview — which formula's details are expanded
+const previewedFormulaId = ref<string | null>(null)
+
+function mobileFormulaClick(f: NonNullable<typeof formulas.value>[number]) {
+  // First tap: expand details
+  if (previewedFormulaId.value !== f.id) {
+    previewedFormulaId.value = f.id
+    return
+  }
+  // Second tap on expanded: select/deselect
+  selectFormula(f)
+}
+
 function selectFormula(f: NonNullable<typeof formulas.value>[number]) {
   if (cart.formula.value?.id === f.id) {
     cart.clearCart()
@@ -180,51 +193,179 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
           <!-- ── Formules ───────────────────────────────────────────── -->
           <div v-if="formulas?.length" class="mt-10">
-            <p class="text-sm font-medium mb-4">
-              Choisissez votre formule
-            </p>
-            <!-- Horizontal scroll on mobile, wrap on desktop -->
-            <div class="flex gap-3 overflow-x-auto pb-2 -mx-6 px-6 sm:mx-0 sm:px-0 sm:flex-wrap snap-x snap-mandatory">
+            <!-- ── MOBILE: stacked full-width cards ── -->
+            <div class="sm:hidden space-y-3">
+              <p class="text-xs font-semibold uppercase tracking-wider text-muted">
+                {{ formulas.length }} formule{{ formulas.length > 1 ? 's' : '' }} disponible{{ formulas.length > 1 ? 's' : '' }}
+              </p>
+
               <div
                 v-for="f in formulas"
                 :key="f.id"
-                class="snap-start shrink-0 w-52 sm:w-auto sm:min-w-44 border-2 rounded-xl p-4 cursor-pointer transition-all flex flex-col gap-2"
-                :class="cart.formula.value?.id === f.id
-                  ? 'border-primary bg-primary/5'
-                  : 'border-default hover:border-muted'"
-                @click="selectFormula(f)"
+                class="relative rounded-2xl border-2 p-4 transition-all"
+                :class="[
+                  cart.formula.value?.id === f.id
+                    ? 'border-primary bg-primary/5'
+                    : 'border-default active:border-muted',
+                  f.isFeatured && cart.formula.value?.id !== f.id ? 'border-primary/30' : ''
+                ]"
+                @click="mobileFormulaClick(f)"
               >
-                <!-- Selected indicator -->
-                <div class="flex items-center justify-between">
-                  <span class="text-xs font-semibold uppercase tracking-wide text-muted">{{ f.name.replace('Formule ', '') }}</span>
+                <!-- Featured ribbon -->
+                <div
+                  v-if="f.isFeatured"
+                  class="absolute -top-3 right-4 px-2.5 py-1 bg-primary text-white text-[10px] font-bold uppercase tracking-wider rounded-full"
+                >
+                  Populaire
+                </div>
+
+                <!-- Top row: name + price + action -->
+                <div class="flex items-center gap-3">
+                  <!-- Radio circle -->
                   <div
-                    v-if="cart.formula.value?.id === f.id"
-                    class="size-4 rounded-full bg-primary flex items-center justify-center shrink-0"
+                    class="size-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors"
+                    :class="cart.formula.value?.id === f.id ? 'border-primary bg-primary' : 'border-muted'"
                   >
-                    <UIcon name="i-lucide-check" class="size-2.5 text-white" />
+                    <UIcon
+                      v-if="cart.formula.value?.id === f.id"
+                      name="i-lucide-check"
+                      class="size-3.5 text-white"
+                    />
+                  </div>
+
+                  <!-- Name + price -->
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-bold leading-tight">{{ f.name }}</p>
+                    <p class="text-lg font-black mt-0.5">
+                      {{ f.basePriceCents === 0 ? 'Sur devis' : `${(f.basePriceCents / 100).toFixed(2)} €` }}
+                    </p>
+                  </div>
+
+                  <!-- Expand chevron -->
+                  <UIcon
+                    name="i-lucide-chevron-down"
+                    class="size-4 text-muted shrink-0 transition-transform"
+                    :class="{ 'rotate-180': previewedFormulaId === f.id }"
+                  />
+                </div>
+
+                <!-- Expandable features -->
+                <div
+                  v-if="previewedFormulaId === f.id"
+                  class="mt-3 pt-3 border-t border-default space-y-3"
+                >
+                  <ul class="space-y-2">
+                    <li
+                      v-for="feat in f.features"
+                      :key="feat.id"
+                      class="flex items-start gap-2 text-sm"
+                    >
+                      <UIcon name="i-lucide-check" class="size-4 text-green-500 shrink-0 mt-0.5" />
+                      <span class="text-muted">{{ feat.featureText }}</span>
+                    </li>
+                    <li v-if="f.extraPhotoPriceCents" class="flex items-start gap-2 text-sm">
+                      <UIcon name="i-lucide-plus" class="size-4 text-primary shrink-0 mt-0.5" />
+                      <span class="text-muted">+{{ (f.extraPhotoPriceCents / 100).toFixed(2) }} € / photo supp.</span>
+                    </li>
+                  </ul>
+
+                  <!-- CTA inside expanded -->
+                  <button
+                    type="button"
+                    class="w-full py-2.5 rounded-xl text-sm font-semibold transition-all"
+                    :class="cart.formula.value?.id === f.id
+                      ? 'bg-primary/10 text-primary'
+                      : 'bg-primary text-white active:scale-[0.98]'"
+                    @click.stop="selectFormula(f)"
+                  >
+                    {{ cart.formula.value?.id === f.id ? 'Sélectionnée' : 'Choisir cette formule' }}
+                  </button>
+                </div>
+
+                <!-- Collapsed: feature count hint -->
+                <p
+                  v-else
+                  class="mt-2 text-xs text-muted pl-9"
+                >
+                  <template v-if="f.features?.length">
+                    {{ f.features[0].featureText }}
+                    <span v-if="f.features.length > 1" class="text-primary font-medium"> +{{ f.features.length - 1 }} avantage{{ f.features.length - 1 > 1 ? 's' : '' }}</span>
+                  </template>
+                  <span class="text-primary font-medium"> — Voir le détail</span>
+                </p>
+              </div>
+            </div>
+
+            <!-- ── DESKTOP: side-by-side cards ── -->
+            <div class="hidden sm:block">
+              <p class="text-sm font-medium mb-4">
+                Choisissez votre formule
+              </p>
+              <div class="grid gap-3" :style="{ gridTemplateColumns: `repeat(${Math.min(formulas.length, 3)}, minmax(0, 1fr))` }">
+                <div
+                  v-for="f in formulas"
+                  :key="f.id"
+                  class="border-2 rounded-xl p-5 cursor-pointer transition-all flex flex-col gap-2.5 relative"
+                  :class="[
+                    cart.formula.value?.id === f.id
+                      ? 'border-primary bg-primary/5 shadow-md'
+                      : 'border-default hover:border-muted',
+                    f.isFeatured && cart.formula.value?.id !== f.id ? 'ring-2 ring-primary/20 border-primary/40' : ''
+                  ]"
+                  @click="selectFormula(f)"
+                >
+                  <div
+                    v-if="f.isFeatured"
+                    class="absolute -top-3 left-4 px-2.5 py-1 bg-primary text-white text-[10px] font-bold uppercase tracking-wider rounded-full"
+                  >
+                    Populaire
+                  </div>
+
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm font-bold uppercase tracking-wide">{{ f.name.replace('Formule ', '') }}</span>
+                    <div
+                      v-if="cart.formula.value?.id === f.id"
+                      class="size-6 rounded-full bg-primary flex items-center justify-center shrink-0"
+                    >
+                      <UIcon name="i-lucide-check" class="size-3.5 text-white" />
+                    </div>
+                  </div>
+
+                  <div class="flex items-baseline gap-1">
+                    <span class="text-3xl font-black tracking-tight">
+                      {{ f.basePriceCents === 0 ? 'Devis' : `${Math.floor(f.basePriceCents / 100)}` }}
+                    </span>
+                    <span v-if="f.basePriceCents > 0" class="text-lg font-bold text-muted">
+                      ,{{ String(f.basePriceCents % 100).padStart(2, '0') }} €
+                    </span>
+                  </div>
+
+                  <div class="h-px bg-default" />
+
+                  <ul class="space-y-2 mt-0.5">
+                    <li
+                      v-for="feat in f.features"
+                      :key="feat.id"
+                      class="flex items-start gap-2 text-sm"
+                    >
+                      <UIcon name="i-lucide-check" class="size-4 text-green-500 shrink-0 mt-0.5" />
+                      <span class="text-muted">{{ feat.featureText }}</span>
+                    </li>
+                    <li v-if="f.extraPhotoPriceCents" class="flex items-start gap-2 text-sm">
+                      <UIcon name="i-lucide-plus" class="size-4 text-primary shrink-0 mt-0.5" />
+                      <span class="text-muted">+{{ (f.extraPhotoPriceCents / 100).toFixed(2) }} €/photo supp.</span>
+                    </li>
+                  </ul>
+
+                  <div
+                    class="mt-auto pt-3 text-center text-sm font-semibold py-2.5 rounded-lg transition-all"
+                    :class="cart.formula.value?.id === f.id
+                      ? 'bg-primary text-white'
+                      : 'bg-elevated text-highlighted'"
+                  >
+                    {{ cart.formula.value?.id === f.id ? 'Sélectionnée' : 'Choisir cette formule' }}
                   </div>
                 </div>
-
-                <!-- Price -->
-                <div class="text-xl font-bold">
-                  {{ f.basePriceCents === 0 ? 'Sur devis' : `${(f.basePriceCents / 100).toFixed(2)} €` }}
-                </div>
-
-                <!-- Features -->
-                <ul class="space-y-1 mt-1">
-                  <li
-                    v-for="feat in f.features"
-                    :key="feat.id"
-                    class="flex items-start gap-1.5 text-xs text-muted"
-                  >
-                    <UIcon name="i-lucide-check" class="size-3 text-green-500 shrink-0 mt-0.5" />
-                    {{ feat.featureText }}
-                  </li>
-                  <li v-if="f.extraPhotoPriceCents" class="flex items-start gap-1.5 text-xs text-muted">
-                    <UIcon name="i-lucide-plus" class="size-3 text-muted shrink-0 mt-0.5" />
-                    +{{ (f.extraPhotoPriceCents / 100).toFixed(2) }} €/photo supp.
-                  </li>
-                </ul>
               </div>
             </div>
           </div>
@@ -403,3 +544,20 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
     </Teleport>
   </div>
 </template>
+
+<style scoped>
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+@keyframes bounce-x {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(4px); }
+}
+.animate-bounce-x {
+  animation: bounce-x 1.2s ease-in-out infinite;
+}
+</style>

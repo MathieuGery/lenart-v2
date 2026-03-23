@@ -17,6 +17,7 @@ export const collections = pgTable('collections', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
   description: text('description'),
+  visible: boolean('visible').notNull().default(true),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 })
@@ -71,6 +72,7 @@ export const orderItems = pgTable('order_items', {
   orderId: uuid('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
   photoId: uuid('photo_id').references(() => photos.id, { onDelete: 'restrict' }),
   photoFilename: varchar('photo_filename', { length: 255 }),
+  collectionId: uuid('collection_id').references(() => collections.id, { onDelete: 'set null' }),
   priceCents: integer('price_cents').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
 })

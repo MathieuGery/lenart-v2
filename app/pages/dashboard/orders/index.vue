@@ -35,6 +35,7 @@ const form = reactive({
 interface PhotoItem {
   filename: string
   photoId: string | null
+  collectionId: string | null
   collectionName: string | null
 }
 
@@ -91,12 +92,13 @@ watch(filenameInput, (val) => {
   searchTimeout = setTimeout(() => searchPhotos(val), 300)
 })
 
-function selectPhoto(result: { id: string, filename: string, collectionName: string }) {
+function selectPhoto(result: { id: string, filename: string, collectionId: string, collectionName: string }) {
   if (photoItems.value.some(p => p.photoId === result.id)) return
   if (!canAddMore.value) return
   photoItems.value.push({
     filename: result.filename,
     photoId: result.id,
+    collectionId: result.collectionId,
     collectionName: result.collectionName
   })
   filenameInput.value = ''
@@ -141,7 +143,13 @@ function addFilename() {
   if (!name || !canAddMore.value) return
   if (!/\.\w+$/.test(name)) name += '.jpg'
   if (!photoItems.value.some(p => p.filename === name)) {
-    photoItems.value.push({ filename: name, photoId: null, collectionName: null })
+    const col = collectionsData.value?.find(c => c.id === selectedCollectionId.value)
+    photoItems.value.push({
+      filename: name,
+      photoId: null,
+      collectionId: selectedCollectionId.value ?? null,
+      collectionName: col?.name ?? null
+    })
   }
   filenameInput.value = ''
   searchResults.value = []
@@ -196,7 +204,10 @@ async function createOrder() {
   creating.value = true
   try {
     const linkedIds = photoItems.value.filter(p => p.photoId).map(p => p.photoId!)
-    const unlinkedFilenames = photoItems.value.filter(p => !p.photoId).map(p => p.filename)
+    const unlinkedItems = photoItems.value.filter(p => !p.photoId).map(p => ({
+      filename: p.filename,
+      collectionId: p.collectionId
+    }))
 
     const result = await $fetch<{ orderId: string, checkoutUrl: string | null }>('/api/orders', {
       method: 'POST',
@@ -205,7 +216,7 @@ async function createOrder() {
         lastName: form.lastName,
         email: form.email,
         photoIds: linkedIds.length ? linkedIds : undefined,
-        photoFilenames: unlinkedFilenames.length ? unlinkedFilenames : undefined,
+        photoFilenames: unlinkedItems.length ? unlinkedItems : undefined,
         formulaId: form.formulaId || undefined,
         paymentMethod: form.paymentMethod,
         terminalId: form.terminalId || undefined

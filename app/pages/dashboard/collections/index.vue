@@ -25,6 +25,18 @@ async function createCollection() {
   }
 }
 
+async function toggleVisibility(collection: CollectionListItem) {
+  try {
+    await $fetch(`/api/collections/${collection.id}`, {
+      method: 'PATCH',
+      body: { visible: !collection.visible }
+    })
+    await refresh()
+  } catch {
+    toast.add({ title: 'Erreur lors de la mise à jour', color: 'error' })
+  }
+}
+
 async function deleteCollection(id: string) {
   try {
     await $fetch(`/api/collections/${id}`, { method: 'DELETE' })
@@ -78,14 +90,20 @@ async function deleteCollection(id: string) {
             v-for="collection in collections"
             :key="collection.id"
             class="border border-default rounded-lg p-4 hover:bg-elevated/50 transition-colors"
+            :class="{ 'opacity-50': !collection.visible }"
           >
             <NuxtLink
               :to="`/dashboard/collections/${collection.id}`"
               class="block"
             >
-              <h3 class="font-medium text-sm">
-                {{ collection.name }}
-              </h3>
+              <div class="flex items-center gap-2">
+                <h3 class="font-medium text-sm">
+                  {{ collection.name }}
+                </h3>
+                <UBadge v-if="!collection.visible" color="neutral" variant="subtle" size="xs">
+                  Masquée
+                </UBadge>
+              </div>
               <p
                 v-if="collection.description"
                 class="text-xs text-muted mt-1 line-clamp-2"
@@ -101,7 +119,14 @@ async function deleteCollection(id: string) {
                 </span>
               </div>
             </NuxtLink>
-            <div class="mt-3 pt-3 border-t border-default flex justify-end">
+            <div class="mt-3 pt-3 border-t border-default flex justify-between">
+              <UButton
+                :icon="collection.visible ? 'i-lucide-eye' : 'i-lucide-eye-off'"
+                :color="collection.visible ? 'neutral' : 'warning'"
+                variant="ghost"
+                size="xs"
+                @click="toggleVisibility(collection)"
+              />
               <UButton
                 icon="i-lucide-trash-2"
                 color="error"

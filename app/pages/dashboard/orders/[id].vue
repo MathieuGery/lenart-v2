@@ -82,6 +82,7 @@ const editForm = reactive({
 interface EditPhotoItem {
   filename: string
   photoId: string | null
+  collectionId: string | null
   collectionName: string | null
 }
 const editPhotoItems = ref<EditPhotoItem[]>([])
@@ -133,12 +134,13 @@ watch(editFilenameInput, (val) => {
   editSearchTimeout = setTimeout(() => editSearchPhotos(val), 300)
 })
 
-function editSelectPhoto(result: { id: string, filename: string, collectionName: string }) {
+function editSelectPhoto(result: { id: string, filename: string, collectionId: string, collectionName: string }) {
   if (editPhotoItems.value.some(p => p.photoId === result.id)) return
   if (!canAddMore.value) return
   editPhotoItems.value.push({
     filename: result.filename,
     photoId: result.id,
+    collectionId: result.collectionId,
     collectionName: result.collectionName
   })
   editFilenameInput.value = ''
@@ -205,6 +207,7 @@ function startEditing() {
     .map((p: OrderPhoto) => ({
       filename: p.filename!,
       photoId: p.linked ? p.id : null,
+      collectionId: p.collectionId ?? null,
       collectionName: p.collectionName ?? null
     }))
   editFilenameInput.value = ''
@@ -224,7 +227,13 @@ function addEditFilename() {
   if (!name || !canAddMore.value) return
   if (!/\.\w+$/.test(name)) name += '.jpg'
   if (!editPhotoItems.value.some(p => p.filename === name)) {
-    editPhotoItems.value.push({ filename: name, photoId: null, collectionName: null })
+    const col = collectionsData.value?.find(c => c.id === editSelectedCollectionId.value)
+    editPhotoItems.value.push({
+      filename: name,
+      photoId: null,
+      collectionId: editSelectedCollectionId.value ?? null,
+      collectionName: col?.name ?? null
+    })
   }
   editFilenameInput.value = ''
   editSearchResults.value = []
@@ -239,7 +248,10 @@ async function saveEdit() {
   saving.value = true
   try {
     const linkedIds = editPhotoItems.value.filter(p => p.photoId).map(p => p.photoId!)
-    const unlinkedFilenames = editPhotoItems.value.filter(p => !p.photoId).map(p => p.filename)
+    const unlinkedItems = editPhotoItems.value.filter(p => !p.photoId).map(p => ({
+      filename: p.filename,
+      collectionId: p.collectionId
+    }))
 
     await $fetch(`/api/orders/${id}`, {
       method: 'PATCH',
@@ -249,7 +261,7 @@ async function saveEdit() {
         email: editForm.email,
         formulaId: editForm.formulaId || null,
         photoIds: linkedIds.length ? linkedIds : undefined,
-        photoFilenames: unlinkedFilenames.length ? unlinkedFilenames : undefined
+        photoFilenames: unlinkedItems.length ? unlinkedItems : undefined
       }
     })
     await refresh()

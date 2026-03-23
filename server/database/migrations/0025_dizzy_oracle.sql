@@ -1,0 +1,1 @@
+ALTER TABLE "collections" ADD COLUMN "visible" boolean DEFAULT true NOT NULL;

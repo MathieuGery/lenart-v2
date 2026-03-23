@@ -8,6 +8,7 @@ export default defineEventHandler(async () => {
       id: collections.id,
       name: collections.name,
       description: collections.description,
+      visible: collections.visible,
       createdAt: collections.createdAt,
       photoCount: count(photos.id)
     })

@@ -36,6 +36,26 @@ interface UploadItem {
 const uploadQueue = ref<UploadItem[]>([])
 const isUploading = computed(() => uploadQueue.value.some((u: UploadItem) => ['pending', 'converting', 'uploading'].includes(u.status)))
 const doneCount = computed(() => uploadQueue.value.filter((u: UploadItem) => u.status === 'done').length)
+const uploadPanelCollapsed = ref(false)
+
+// Global progress: weighted by file size across all items
+const globalProgress = computed(() => {
+  const items = uploadQueue.value
+  if (!items.length) return 0
+  const totalSize = items.reduce((s, i) => s + i.size, 0)
+  if (totalSize === 0) return 0
+  const weightedProgress = items.reduce((s, i) => {
+    const pct = ['done', 'duplicate'].includes(i.status) ? 100 : i.status === 'error' ? 0 : i.progress
+    return s + (pct / 100) * i.size
+  }, 0)
+  return Math.round((weightedProgress / totalSize) * 100)
+})
+
+const globalSpeed = computed(() => {
+  return uploadQueue.value
+    .filter((i: UploadItem) => i.status === 'uploading')
+    .reduce((s, i) => s + i.speed, 0)
+})
 
 function uploadFileXHR(file: File, item: UploadItem): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -270,111 +290,6 @@ function formatSpeed(bytesPerSec: number) {
     </template>
 
     <template #body>
-      <!-- Upload queue -->
-      <div v-if="uploadQueue.length" class="mx-6 mt-6">
-        <div class="border border-default rounded-lg overflow-hidden">
-          <div class="flex items-center justify-between px-4 py-2.5 bg-elevated/50">
-            <span class="text-xs font-medium">
-              Uploads ({{ doneCount }}/{{ uploadQueue.length }})
-            </span>
-            <UButton
-              v-if="!isUploading"
-              icon="i-lucide-x"
-              size="xs"
-              variant="ghost"
-              color="neutral"
-              square
-              @click="clearFinished"
-            />
-          </div>
-          <div class="divide-y divide-default max-h-60 overflow-y-auto">
-            <div
-              v-for="item in uploadQueue"
-              :key="item.id"
-              class="px-4 py-2.5 flex items-center gap-3"
-            >
-              <!-- Status icon -->
-              <div class="shrink-0">
-                <UIcon
-                  v-if="item.status === 'done'"
-                  name="i-lucide-check-circle"
-                  class="size-4 text-green-500"
-                />
-                <UIcon
-                  v-else-if="item.status === 'duplicate'"
-                  name="i-lucide-copy"
-                  class="size-4 text-amber-500"
-                />
-                <UIcon
-                  v-else-if="item.status === 'error'"
-                  name="i-lucide-alert-circle"
-                  class="size-4 text-red-500"
-                />
-                <div
-                  v-else-if="item.status === 'uploading' || item.status === 'converting'"
-                  class="size-4 border-2 border-primary border-t-transparent rounded-full animate-spin"
-                />
-                <UIcon
-                  v-else
-                  name="i-lucide-clock"
-                  class="size-4 text-muted"
-                />
-              </div>
-
-              <!-- File info -->
-              <div class="flex-1 min-w-0">
-                <div class="flex items-baseline justify-between gap-2">
-                  <span class="text-xs truncate">{{ item.name }}</span>
-                  <span
-                    v-if="item.status === 'duplicate'"
-                    class="text-[11px] text-amber-500 shrink-0"
-                  >
-                    Doublon
-                  </span>
-                  <div class="flex items-center gap-2 shrink-0">
-                    <span
-                      v-if="item.status === 'uploading' && item.speed > 0"
-                      class="text-[11px] text-muted"
-                    >
-                      {{ formatSpeed(item.speed) }}
-                    </span>
-                    <span class="text-[11px] text-muted">
-                      {{ formatSize(item.size) }}
-                    </span>
-                  </div>
-                </div>
-
-                <!-- Progress bar (conversion + upload) -->
-                <div
-                  v-if="item.status === 'converting' || item.status === 'uploading'"
-                  class="mt-1.5 h-1 bg-elevated rounded-full overflow-hidden"
-                >
-                  <div
-                    class="h-full rounded-full transition-all duration-200"
-                    :class="item.status === 'converting' ? 'bg-amber-500' : 'bg-primary'"
-                    :style="{ width: `${item.progress}%` }"
-                  />
-                </div>
-                <p
-                  v-if="item.status === 'converting'"
-                  class="mt-0.5 text-[11px] text-amber-500"
-                >
-                  Conversion &amp; compression…
-                </p>
-              </div>
-
-              <!-- Progress % -->
-              <span
-                v-if="item.status === 'converting' || item.status === 'uploading'"
-                class="text-[11px] text-muted tabular-nums shrink-0 w-8 text-right"
-              >
-                {{ item.progress }}%
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Empty state -->
       <div
         v-if="!collection?.photos?.length && !uploadQueue.length"
@@ -402,7 +317,7 @@ function formatSpeed(bytesPerSec: number) {
       </div>
 
       <!-- Photos -->
-      <div v-if="collection?.photos?.length" class="p-6">
+      <div v-if="collection?.photos?.length" class="p-6" :class="{ 'pb-40': uploadQueue.length }">
         <!-- Drop zone banner -->
         <div
           class="mb-6 border-2 border-dashed border-default rounded-lg p-4 text-center transition-colors"
@@ -513,6 +428,134 @@ function formatSpeed(bytesPerSec: number) {
     </template>
   </UDashboardPanel>
 
+  <!-- Upload panel — fixed bottom -->
+  <Transition name="upload-panel">
+    <div
+      v-if="uploadQueue.length"
+      class="fixed bottom-0 right-0 left-(--sidebar-width,0px) z-40 border-t border-default bg-default shadow-lg"
+    >
+      <!-- Global progress bar -->
+      <div class="h-1 bg-elevated">
+        <div
+          class="h-full bg-primary transition-all duration-300"
+          :style="{ width: `${globalProgress}%` }"
+        />
+      </div>
+
+      <!-- Header -->
+      <div class="flex items-center justify-between px-4 py-2">
+        <div class="flex items-center gap-3">
+          <div
+            v-if="isUploading"
+            class="size-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0"
+          />
+          <UIcon v-else name="i-lucide-check-circle" class="size-4 text-green-500 shrink-0" />
+          <span class="text-xs font-medium">
+            {{ isUploading ? 'Upload en cours' : 'Upload terminé' }}
+            — {{ doneCount }}/{{ uploadQueue.length }} fichier{{ uploadQueue.length > 1 ? 's' : '' }}
+          </span>
+          <span v-if="isUploading" class="text-xs text-muted tabular-nums">
+            {{ globalProgress }}%
+          </span>
+          <span v-if="isUploading && globalSpeed > 0" class="text-xs text-muted">
+            · {{ formatSpeed(globalSpeed) }}
+          </span>
+        </div>
+        <div class="flex items-center gap-1">
+          <UButton
+            :icon="uploadPanelCollapsed ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            square
+            @click="uploadPanelCollapsed = !uploadPanelCollapsed"
+          />
+          <UButton
+            v-if="!isUploading"
+            icon="i-lucide-x"
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            square
+            @click="clearFinished"
+          />
+        </div>
+      </div>
+
+      <!-- File list -->
+      <div v-if="!uploadPanelCollapsed" class="divide-y divide-default max-h-52 overflow-y-auto">
+        <div
+          v-for="item in uploadQueue"
+          :key="item.id"
+          class="px-4 py-2 flex items-center gap-3"
+        >
+          <!-- Status icon -->
+          <div class="shrink-0">
+            <UIcon
+              v-if="item.status === 'done'"
+              name="i-lucide-check-circle"
+              class="size-3.5 text-green-500"
+            />
+            <UIcon
+              v-else-if="item.status === 'duplicate'"
+              name="i-lucide-copy"
+              class="size-3.5 text-amber-500"
+            />
+            <UIcon
+              v-else-if="item.status === 'error'"
+              name="i-lucide-alert-circle"
+              class="size-3.5 text-red-500"
+            />
+            <div
+              v-else-if="item.status === 'uploading' || item.status === 'converting'"
+              class="size-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin"
+            />
+            <UIcon
+              v-else
+              name="i-lucide-clock"
+              class="size-3.5 text-muted"
+            />
+          </div>
+
+          <!-- File info + progress -->
+          <div class="flex-1 min-w-0">
+            <div class="flex items-baseline justify-between gap-2">
+              <span class="text-xs truncate">{{ item.name }}</span>
+              <div class="flex items-center gap-2 shrink-0">
+                <span v-if="item.status === 'duplicate'" class="text-[11px] text-amber-500">Doublon</span>
+                <span v-if="item.status === 'uploading' && item.speed > 0" class="text-[11px] text-muted">
+                  {{ formatSpeed(item.speed) }}
+                </span>
+                <span class="text-[11px] text-muted">{{ formatSize(item.size) }}</span>
+              </div>
+            </div>
+            <div
+              v-if="item.status === 'converting' || item.status === 'uploading'"
+              class="mt-1 h-1 bg-elevated rounded-full overflow-hidden"
+            >
+              <div
+                class="h-full rounded-full transition-all duration-200"
+                :class="item.status === 'converting' ? 'bg-amber-500' : 'bg-primary'"
+                :style="{ width: `${item.progress}%` }"
+              />
+            </div>
+            <p v-if="item.status === 'converting'" class="mt-0.5 text-[11px] text-amber-500">
+              Conversion &amp; compression…
+            </p>
+          </div>
+
+          <!-- Progress % -->
+          <span
+            v-if="item.status === 'converting' || item.status === 'uploading'"
+            class="text-[11px] text-muted tabular-nums shrink-0 w-8 text-right"
+          >
+            {{ item.progress }}%
+          </span>
+        </div>
+      </div>
+    </div>
+  </Transition>
+
   <!-- Purge confirmation modal -->
   <UModal v-model:open="purgeModalOpen" :ui="{ content: 'max-w-md' }">
     <template #content>
@@ -550,5 +593,13 @@ function formatSpeed(bytesPerSec: number) {
 }
 .lazy-img[src] {
   opacity: 1;
+}
+.upload-panel-enter-active,
+.upload-panel-leave-active {
+  transition: transform 0.25s ease;
+}
+.upload-panel-enter-from,
+.upload-panel-leave-to {
+  transform: translateY(100%);
 }
 </style>

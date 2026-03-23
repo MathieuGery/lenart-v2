@@ -3,6 +3,7 @@ export interface CollectionListItem {
   id: string
   name: string
   description: string | null
+  visible: boolean
   createdAt: string
   photoCount: number
 }
@@ -95,6 +96,7 @@ export interface OrderPhoto {
   id: string | null
   filename: string | null
   linked: boolean
+  collectionId: string | null
   collectionName: string | null
   url: string | null
 }

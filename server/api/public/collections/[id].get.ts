@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import { collections, photos } from '~~/server/database/schema'
 import { db } from '~~/server/utils/db'
 
@@ -7,7 +7,7 @@ export default defineEventHandler(async (event) => {
 
   const [collection] = await db.select()
     .from(collections)
-    .where(eq(collections.id, id))
+    .where(and(eq(collections.id, id), eq(collections.visible, true)))
     .limit(1)
 
   if (!collection) {

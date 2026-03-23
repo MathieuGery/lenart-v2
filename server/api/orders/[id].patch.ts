@@ -13,7 +13,10 @@ const bodySchema = z.object({
   email: z.string().email().optional(),
   formulaId: z.string().uuid().nullable().optional(),
   photoIds: z.array(z.string().uuid()).max(100).optional(),
-  photoFilenames: z.array(z.string().min(1).max(255)).optional(),
+  photoFilenames: z.array(z.object({
+    filename: z.string().min(1).max(255),
+    collectionId: z.string().uuid().nullable().optional()
+  })).optional(),
   amazonLink: z.string().url().max(1000).nullable().optional()
 })
 
@@ -38,8 +41,8 @@ export default defineEventHandler(async (event) => {
   const hasPhotoChanges = body.photoIds !== undefined || body.photoFilenames !== undefined
   if (hasPhotoChanges) {
     const linkedPhotoIds = body.photoIds ?? []
-    const filenames = body.photoFilenames ?? []
-    const totalItems = linkedPhotoIds.length + filenames.length
+    const deferredItems = body.photoFilenames ?? []
+    const totalItems = linkedPhotoIds.length + deferredItems.length
 
     // Validate linked photos
     if (linkedPhotoIds.length > 0) {
@@ -108,11 +111,12 @@ export default defineEventHandler(async (event) => {
     }
 
     // Insert items for deferred filenames
-    for (const filename of filenames) {
+    for (const item of deferredItems) {
       itemValues.push({
         orderId: id,
         photoId: null,
-        photoFilename: filename,
+        photoFilename: item.filename,
+        collectionId: item.collectionId ?? null,
         priceCents: priceCentsPerItem
       })
     }

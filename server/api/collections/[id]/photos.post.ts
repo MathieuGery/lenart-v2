@@ -60,12 +60,22 @@ export default defineEventHandler(async (event) => {
       })
       .returning()
 
-    // Auto-link unlinked order items matching this filename
+    // Auto-link unlinked order items matching this filename and collection
     const photoName = photo.filename
+    // Link items that explicitly target this collection
     await db.update(orderItems)
       .set({ photoId: photo.id })
       .where(and(
         eq(orderItems.photoFilename, photoName),
+        eq(orderItems.collectionId, collectionId),
+        isNull(orderItems.photoId)
+      ))
+    // Link items with no collection specified (legacy / no filter)
+    await db.update(orderItems)
+      .set({ photoId: photo.id })
+      .where(and(
+        eq(orderItems.photoFilename, photoName),
+        isNull(orderItems.collectionId),
         isNull(orderItems.photoId)
       ))
 

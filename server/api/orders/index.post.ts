@@ -9,7 +9,10 @@ const bodySchema = z.object({
   lastName: z.string().min(1).max(255),
   email: z.string().email(),
   photoIds: z.array(z.string().uuid()).max(100).optional(),
-  photoFilenames: z.array(z.string().min(1).max(255)).max(100).optional(),
+  photoFilenames: z.array(z.object({
+    filename: z.string().min(1).max(255),
+    collectionId: z.string().uuid().nullable().optional()
+  })).max(100).optional(),
   formulaId: z.string().uuid().optional(),
   paymentMethod: z.enum(['link', 'terminal', 'cash']),
   terminalId: z.string().optional()
@@ -38,8 +41,8 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const filenames = body.photoFilenames ?? []
-  const totalItems = linkedPhotoIds.length + filenames.length
+  const deferredItems = body.photoFilenames ?? []
+  const totalItems = linkedPhotoIds.length + deferredItems.length
 
   // Calculate total
   let totalCents: number
@@ -102,11 +105,12 @@ export default defineEventHandler(async (event) => {
   }
 
   // Insert order items for filenames (deferred linking — resolved on photo upload)
-  for (const filename of filenames) {
+  for (const item of deferredItems) {
     itemValues.push({
       orderId: order.id,
       photoId: null,
-      photoFilename: filename,
+      photoFilename: item.filename,
+      collectionId: item.collectionId ?? null,
       priceCents: priceCentsPerItem
     })
   }
