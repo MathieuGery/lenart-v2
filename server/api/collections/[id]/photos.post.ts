@@ -42,7 +42,9 @@ export default defineEventHandler(async (event) => {
       continue
     }
 
-    const ext = file.filename?.split('.').pop() || 'jpg'
+    const ext = (file.filename?.split('.').pop() || 'jpg').toLowerCase()
+    const rawName = file.filename || `photo.${ext}`
+    const filename = rawName.replace(/\.[^.]+$/, `.${ext}`)
     const key = `collections/${collectionId}/${randomUUID()}.${ext}`
 
     const watermarked = await applyWatermark(file.data)
@@ -52,7 +54,7 @@ export default defineEventHandler(async (event) => {
       .values({
         collectionId,
         key,
-        filename: file.filename || `photo.${ext}`,
+        filename,
         hash,
         size: watermarked.length
       })

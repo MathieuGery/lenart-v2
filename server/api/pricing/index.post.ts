@@ -13,7 +13,7 @@ const bodySchema = z.object({
   basePriceCents: z.number().int().min(0).default(0),
   isFeatured: z.boolean().default(false),
   digitalPhotosCount: z.number().int().min(0).default(0),
-  printDetails: z.string().optional(),
+  printDetails: z.string().nullable().optional(),
   extraPhotoPriceCents: z.number().int().min(0).optional(),
   isTourComplete: z.boolean().default(false),
   isActive: z.boolean().default(true),
