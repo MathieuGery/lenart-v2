@@ -268,11 +268,21 @@ const STATUS_COLOR: Record<string, 'warning' | 'success' | 'error' | 'neutral'> 
   failed: 'error'
 }
 
+const BUSINESS_STATUS_LABEL: Record<string, string> = {
+  in_progress: 'En cours',
+  completed: 'Terminée'
+}
+
+const BUSINESS_STATUS_COLOR: Record<string, 'warning' | 'success'> = {
+  in_progress: 'warning',
+  completed: 'success'
+}
+
 // Search
 const search = ref('')
 
 // Sort
-type SortKey = 'createdAt' | 'firstName' | 'totalCents' | 'photoCount' | 'status' | 'cashPayment'
+type SortKey = 'createdAt' | 'firstName' | 'totalCents' | 'photoCount' | 'status' | 'businessStatus' | 'cashPayment'
 const sortKey = ref<SortKey>('createdAt')
 const sortDir = ref<'asc' | 'desc'>('desc')
 
@@ -316,6 +326,9 @@ const filteredOrders = computed(() => {
     } else if (sortKey.value === 'status') {
       valA = a.status
       valB = b.status
+    } else if (sortKey.value === 'businessStatus') {
+      valA = a.businessStatus
+      valB = b.businessStatus
     } else if (sortKey.value === 'cashPayment') {
       valA = a.cashPayment ? 1 : 0
       valB = b.cashPayment ? 1 : 0
@@ -464,6 +477,21 @@ const filteredOrders = computed(() => {
                     />
                   </button>
                 </th>
+                <!-- Sortable: Avancement -->
+                <th class="text-left px-4 py-3 font-medium text-xs hidden sm:table-cell">
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1 text-muted hover:text-highlighted transition-colors"
+                    @click="toggleSort('businessStatus')"
+                  >
+                    Avancement
+                    <UIcon
+                      :name="sortKey === 'businessStatus' ? (sortDir === 'asc' ? 'i-lucide-arrow-up' : 'i-lucide-arrow-down') : 'i-lucide-arrow-up-down'"
+                      class="size-3"
+                      :class="sortKey === 'businessStatus' ? 'text-highlighted' : 'opacity-40'"
+                    />
+                  </button>
+                </th>
                 <!-- Sortable: Paiement -->
                 <th class="text-left px-4 py-3 font-medium text-xs hidden md:table-cell">
                   <button
@@ -531,6 +559,15 @@ const filteredOrders = computed(() => {
                     {{ STATUS_LABEL[order.status] ?? order.status }}
                   </UBadge>
                 </td>
+                <td class="px-4 py-3 hidden sm:table-cell">
+                  <UBadge
+                    :color="BUSINESS_STATUS_COLOR[order.businessStatus] ?? 'neutral'"
+                    variant="subtle"
+                    size="sm"
+                  >
+                    {{ BUSINESS_STATUS_LABEL[order.businessStatus] ?? order.businessStatus }}
+                  </UBadge>
+                </td>
                 <td class="px-4 py-3 hidden md:table-cell">
                   <div class="flex items-center gap-1.5 text-xs">
                     <UIcon
@@ -557,7 +594,7 @@ const filteredOrders = computed(() => {
 
               <!-- Empty search result -->
               <tr v-if="!filteredOrders.length">
-                <td colspan="7" class="px-4 py-10 text-center text-sm text-muted">
+                <td colspan="8" class="px-4 py-10 text-center text-sm text-muted">
                   Aucune commande ne correspond à « {{ search }} ».
                 </td>
               </tr>

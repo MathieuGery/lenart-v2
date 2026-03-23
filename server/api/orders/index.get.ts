@@ -10,6 +10,7 @@ export default defineEventHandler(async () => {
       firstName: orders.firstName,
       lastName: orders.lastName,
       status: orders.status,
+      businessStatus: orders.businessStatus,
       cashPayment: orders.cashPayment,
       totalCents: orders.totalCents,
       createdAt: orders.createdAt,

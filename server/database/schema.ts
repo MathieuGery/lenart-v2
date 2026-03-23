@@ -2,6 +2,7 @@ import { pgTable, uuid, varchar, timestamp, integer, text, uniqueIndex, index, p
 
 export const contactMessageStatusEnum = pgEnum('contact_message_status', ['new', 'read', 'archived'])
 export const orderStatusEnum = pgEnum('order_status', ['pending', 'paid', 'cancelled', 'expired', 'failed'])
+export const businessStatusEnum = pgEnum('business_status', ['in_progress', 'completed'])
 export const promoCodeTypeEnum = pgEnum('promo_code_type', ['percentage', 'fixed'])
 
 export const admins = pgTable('admins', {
@@ -50,6 +51,7 @@ export const orders = pgTable('orders', {
   discountCents: integer('discount_cents').notNull().default(0),
   cashPayment: boolean('cash_payment').notNull().default(false),
   status: orderStatusEnum('status').notNull().default('pending'),
+  businessStatus: businessStatusEnum('business_status').notNull().default('in_progress'),
   totalCents: integer('total_cents').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull()

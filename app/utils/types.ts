@@ -114,6 +114,7 @@ export interface OrderDetail {
   promoCode: string | null
   discountCents: number
   status: string
+  businessStatus: string
   cashPayment: boolean
   totalCents: number
   formulaName: string | null
@@ -129,6 +130,7 @@ export interface OrderListItem {
   firstName: string
   lastName: string
   status: string
+  businessStatus: string
   cashPayment: boolean
   totalCents: number
   createdAt: string

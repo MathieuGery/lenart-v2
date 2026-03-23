@@ -183,6 +183,13 @@
       "when": 1774298988066,
       "tag": "0025_dizzy_oracle",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1774305514700,
+      "tag": "0026_classy_epoch",
+      "breakpoints": true
     }
   ]
 }

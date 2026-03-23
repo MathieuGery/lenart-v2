@@ -6,8 +6,11 @@ import { getPhotoPriceCents } from '~~/server/utils/settings'
 
 const VALID_STATUSES = ['pending', 'paid', 'cancelled', 'expired', 'failed'] as const
 
+const VALID_BUSINESS_STATUSES = ['in_progress', 'completed'] as const
+
 const bodySchema = z.object({
   status: z.enum(VALID_STATUSES).optional(),
+  businessStatus: z.enum(VALID_BUSINESS_STATUSES).optional(),
   firstName: z.string().min(1).max(255).optional(),
   lastName: z.string().min(1).max(255).optional(),
   email: z.string().email().optional(),
@@ -32,6 +35,7 @@ export default defineEventHandler(async (event) => {
   // Update order fields
   const orderUpdate: Record<string, unknown> = { updatedAt: new Date() }
   if (body.status) orderUpdate.status = body.status
+  if (body.businessStatus) orderUpdate.businessStatus = body.businessStatus
   if (body.firstName) orderUpdate.firstName = body.firstName
   if (body.lastName) orderUpdate.lastName = body.lastName
   if (body.email) orderUpdate.email = body.email

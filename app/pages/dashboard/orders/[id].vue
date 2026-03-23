@@ -25,9 +25,20 @@ const STATUS_COLOR: Record<string, 'warning' | 'success' | 'error' | 'neutral'> 
   failed: 'error'
 }
 
+const BUSINESS_STATUS_LABEL: Record<string, string> = {
+  in_progress: 'En cours',
+  completed: 'Terminée'
+}
+
+const BUSINESS_STATUS_COLOR: Record<string, 'warning' | 'success'> = {
+  in_progress: 'warning',
+  completed: 'success'
+}
+
 // Status update
 const updating = ref(false)
 const selectedStatus = ref(order.value?.status ?? 'pending')
+const updatingBusiness = ref(false)
 
 async function updateStatus() {
   updating.value = true
@@ -42,6 +53,23 @@ async function updateStatus() {
     toast.add({ title: 'Erreur lors de la mise à jour', color: 'error' })
   } finally {
     updating.value = false
+  }
+}
+
+async function toggleBusinessStatus() {
+  updatingBusiness.value = true
+  try {
+    const newStatus = order.value?.businessStatus === 'completed' ? 'in_progress' : 'completed'
+    await $fetch(`/api/orders/${id}`, {
+      method: 'PATCH',
+      body: { businessStatus: newStatus }
+    })
+    await refresh()
+    toast.add({ title: 'Avancement mis à jour' })
+  } catch {
+    toast.add({ title: 'Erreur lors de la mise à jour', color: 'error' })
+  } finally {
+    updatingBusiness.value = false
   }
 }
 
@@ -332,48 +360,80 @@ async function saveEdit() {
           <!-- Header card -->
           <div class="border border-default rounded-lg p-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             <div>
-              <p class="text-xs text-muted mb-1">Client</p>
-              <p class="text-sm font-medium">{{ order.firstName }} {{ order.lastName }}</p>
-              <p class="text-xs text-muted">{{ order.email }}</p>
+              <p class="text-xs text-muted mb-1">
+                Client
+              </p>
+              <p class="text-sm font-medium">
+                {{ order.firstName }} {{ order.lastName }}
+              </p>
+              <p class="text-xs text-muted">
+                {{ order.email }}
+              </p>
             </div>
             <div>
-              <p class="text-xs text-muted mb-1">Formule</p>
-              <p class="text-sm font-medium">{{ order.formulaName ?? '—' }}</p>
+              <p class="text-xs text-muted mb-1">
+                Formule
+              </p>
+              <p class="text-sm font-medium">
+                {{ order.formulaName ?? '—' }}
+              </p>
             </div>
             <div>
-              <p class="text-xs text-muted mb-1">Photos</p>
-              <p class="text-sm font-medium">{{ order.photos.length }}</p>
+              <p class="text-xs text-muted mb-1">
+                Photos
+              </p>
+              <p class="text-sm font-medium">
+                {{ order.photos.length }}
+              </p>
             </div>
             <div>
-              <p class="text-xs text-muted mb-1">Total</p>
-              <p class="text-sm font-medium">{{ (order.totalCents / 100).toFixed(2) }} €</p>
+              <p class="text-xs text-muted mb-1">
+                Total
+              </p>
+              <p class="text-sm font-medium">
+                {{ (order.totalCents / 100).toFixed(2) }} €
+              </p>
               <p v-if="order.discountCents > 0" class="text-xs text-green-600 dark:text-green-400">
                 -{{ (order.discountCents / 100).toFixed(2) }} € ({{ order.promoCode }})
               </p>
             </div>
             <div>
-              <p class="text-xs text-muted mb-1">Paiement</p>
-              <p class="text-sm font-medium">{{ order.cashPayment ? 'Espèces' : 'En ligne' }}</p>
+              <p class="text-xs text-muted mb-1">
+                Paiement
+              </p>
+              <p class="text-sm font-medium">
+                {{ order.cashPayment ? 'Espèces' : 'En ligne' }}
+              </p>
             </div>
             <div>
-              <p class="text-xs text-muted mb-1">Date</p>
-              <p class="text-sm">{{ new Date(order.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) }}</p>
+              <p class="text-xs text-muted mb-1">
+                Date
+              </p>
+              <p class="text-sm">
+                {{ new Date(order.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) }}
+              </p>
             </div>
           </div>
 
           <!-- Address -->
           <div v-if="order.address" class="border border-default rounded-lg p-5">
-            <h2 class="text-sm font-medium mb-3">Adresse postale</h2>
+            <h2 class="text-sm font-medium mb-3">
+              Adresse postale
+            </h2>
             <div class="text-sm space-y-0.5">
               <p>{{ order.address }}</p>
               <p>{{ order.postalCode }} {{ order.city }}</p>
-              <p v-if="order.country" class="text-muted">{{ order.country }}</p>
+              <p v-if="order.country" class="text-muted">
+                {{ order.country }}
+              </p>
             </div>
           </div>
 
           <!-- Status -->
           <div class="border border-default rounded-lg p-5">
-            <h2 class="text-sm font-medium mb-4">Statut de la commande</h2>
+            <h2 class="text-sm font-medium mb-4">
+              Statut de la commande
+            </h2>
             <div class="flex items-center gap-3">
               <UBadge :color="STATUS_COLOR[order.status] ?? 'neutral'" variant="subtle" size="md">
                 {{ STATUS_LABEL[order.status] ?? order.status }}
@@ -382,13 +442,43 @@ async function saveEdit() {
               <USelect
                 v-model="selectedStatus"
                 :items="Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }))"
-                size="sm" color="neutral" class="w-40"
+                size="sm"
+                color="neutral"
+                class="w-40"
               />
               <UButton
-                size="sm" color="neutral" :loading="updating"
-                :disabled="selectedStatus === order.status" @click="updateStatus"
+                size="sm"
+                color="neutral"
+                :loading="updating"
+                :disabled="selectedStatus === order.status"
+                @click="updateStatus"
               >
                 Appliquer
+              </UButton>
+            </div>
+          </div>
+
+          <!-- Business status -->
+          <div class="border border-default rounded-lg p-5">
+            <h2 class="text-sm font-medium mb-4">
+              Avancement
+            </h2>
+            <p class="text-xs text-muted mb-3">
+              Représente l'état d'avancement de la commande côté traitement photo et permet l'envoi de mail quand la commande est terminée
+            </p>
+            <div class="flex items-center gap-3">
+              <UBadge :color="BUSINESS_STATUS_COLOR[order.businessStatus] ?? 'neutral'" variant="subtle" size="md">
+                {{ BUSINESS_STATUS_LABEL[order.businessStatus] ?? order.businessStatus }}
+              </UBadge>
+              <UButton
+                size="sm"
+                :color="order.businessStatus === 'completed' ? 'warning' : 'success'"
+                variant="outline"
+                :loading="updatingBusiness"
+                :icon="order.businessStatus === 'completed' ? 'i-lucide-rotate-ccw' : 'i-lucide-check'"
+                @click="toggleBusinessStatus"
+              >
+                {{ order.businessStatus === 'completed' ? 'Repasser en cours' : 'Marquer terminée' }}
               </UButton>
             </div>
           </div>
@@ -396,10 +486,14 @@ async function saveEdit() {
           <!-- Photos -->
           <div class="border border-default rounded-lg p-5">
             <div class="flex items-center justify-between mb-4">
-              <h2 class="text-sm font-medium">Photos commandées ({{ order.photos.length }})</h2>
+              <h2 class="text-sm font-medium">
+                Photos commandées ({{ order.photos.length }})
+              </h2>
               <UBadge
                 v-if="order.photos.some((p: OrderPhoto) => !p.linked)"
-                color="warning" variant="subtle" size="sm"
+                color="warning"
+                variant="subtle"
+                size="sm"
               >
                 {{ order.photos.filter((p: OrderPhoto) => !p.linked).length }} en attente de liaison
               </UBadge>
@@ -407,8 +501,11 @@ async function saveEdit() {
             <div v-if="order.photos.length" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               <div v-for="photo in order.photos" :key="photo.itemId" class="space-y-1.5">
                 <a
-                  v-if="photo.linked" :href="photo.url" target="_blank"
-                  class="relative aspect-4/3 rounded overflow-hidden bg-muted/10 block group" :title="photo.filename"
+                  v-if="photo.linked"
+                  :href="photo.url"
+                  target="_blank"
+                  class="relative aspect-4/3 rounded overflow-hidden bg-muted/10 block group"
+                  :title="photo.filename"
                 >
                   <img :src="photo.url" :alt="photo.filename" class="size-full object-cover transition-all duration-200 group-hover:brightness-75">
                   <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -423,20 +520,28 @@ async function saveEdit() {
                   <UIcon name="i-lucide-image-off" class="size-4 text-muted" />
                 </div>
                 <div class="px-0.5">
-                  <p class="text-xs truncate" :title="photo.filename">{{ photo.filename }}</p>
+                  <p class="text-xs truncate" :title="photo.filename">
+                    {{ photo.filename }}
+                  </p>
                   <p v-if="photo.collectionName" class="text-[10px] text-muted truncate" :title="photo.collectionName">
                     {{ photo.collectionName }}
                   </p>
-                  <p v-else class="text-[10px] text-muted/50 italic">Non liée</p>
+                  <p v-else class="text-[10px] text-muted/50 italic">
+                    Non liée
+                  </p>
                 </div>
               </div>
             </div>
-            <p v-else class="text-sm text-muted">Aucune photo associée.</p>
+            <p v-else class="text-sm text-muted">
+              Aucune photo associée.
+            </p>
           </div>
 
           <!-- Amazon link -->
           <div class="border border-default rounded-lg p-5">
-            <h2 class="text-sm font-medium mb-3">Lien Amazon</h2>
+            <h2 class="text-sm font-medium mb-3">
+              Lien Amazon
+            </h2>
             <div class="flex items-center gap-2">
               <UInput
                 v-model="amazonLinkInput"
@@ -480,7 +585,9 @@ async function saveEdit() {
         <template v-else>
           <!-- Client info -->
           <div class="border border-default rounded-lg p-5 space-y-4">
-            <h2 class="text-sm font-medium">Informations client</h2>
+            <h2 class="text-sm font-medium">
+              Informations client
+            </h2>
             <div class="grid grid-cols-2 gap-3">
               <UFormField label="Prénom">
                 <UInput v-model="editForm.firstName" color="neutral" class="w-full" />
@@ -490,13 +597,20 @@ async function saveEdit() {
               </UFormField>
             </div>
             <UFormField label="E-mail">
-              <UInput v-model="editForm.email" type="email" color="neutral" class="w-full" />
+              <UInput
+                v-model="editForm.email"
+                type="email"
+                color="neutral"
+                class="w-full"
+              />
             </UFormField>
           </div>
 
           <!-- Formula -->
           <div class="border border-default rounded-lg p-5 space-y-4">
-            <h2 class="text-sm font-medium">Formule</h2>
+            <h2 class="text-sm font-medium">
+              Formule
+            </h2>
             <div class="grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -504,8 +618,12 @@ async function saveEdit() {
                 :class="!editForm.formulaId ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
                 @click="editForm.formulaId = ''"
               >
-                <p class="font-medium">Sans formule</p>
-                <p class="text-xs text-muted">Prix par photo</p>
+                <p class="font-medium">
+                  Sans formule
+                </p>
+                <p class="text-xs text-muted">
+                  Prix par photo
+                </p>
               </button>
               <button
                 v-for="f in formulas"
@@ -515,8 +633,12 @@ async function saveEdit() {
                 :class="editForm.formulaId === f.id ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
                 @click="editForm.formulaId = f.id"
               >
-                <p class="font-medium">{{ f.name }}</p>
-                <p class="text-xs text-muted">{{ (f.basePriceCents / 100).toFixed(2) }} € — {{ f.digitalPhotosCount }} photos</p>
+                <p class="font-medium">
+                  {{ f.name }}
+                </p>
+                <p class="text-xs text-muted">
+                  {{ (f.basePriceCents / 100).toFixed(2) }} € — {{ f.digitalPhotosCount }} photos
+                </p>
               </button>
             </div>
 
@@ -540,7 +662,9 @@ async function saveEdit() {
           <!-- Photos -->
           <div class="border border-default rounded-lg p-5 space-y-4">
             <div class="flex items-center justify-between">
-              <h2 class="text-sm font-medium">Photos</h2>
+              <h2 class="text-sm font-medium">
+                Photos
+              </h2>
               <span v-if="maxPhotos !== Infinity" class="text-xs text-muted tabular-nums">
                 {{ editPhotoItems.length }} / {{ maxPhotos }}
               </span>
@@ -596,8 +720,12 @@ async function saveEdit() {
                 >
                   <UIcon name="i-lucide-image" class="size-3.5 text-success shrink-0" />
                   <div class="min-w-0 flex-1">
-                    <p class="truncate">{{ result.filename }}</p>
-                    <p class="text-[10px] text-muted truncate">{{ result.collectionName }}</p>
+                    <p class="truncate">
+                      {{ result.filename }}
+                    </p>
+                    <p class="text-[10px] text-muted truncate">
+                      {{ result.collectionName }}
+                    </p>
                   </div>
                   <UIcon v-if="editPhotoItems.some(p => p.photoId === result.id)" name="i-lucide-check" class="size-3.5 text-success shrink-0" />
                 </button>
