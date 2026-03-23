@@ -9,6 +9,7 @@ const photoPriceCents = ref(Number(settings.value?.photo_price_cents ?? 500))
 const watermarkSize = ref(Number(settings.value?.watermark_size ?? 15))
 const watermarkSpacing = ref(Number(settings.value?.watermark_spacing ?? 60))
 const watermarkOpacity = ref(Number(settings.value?.watermark_opacity ?? 40))
+const watermarkMode = ref<'grid' | 'centered'>(settings.value?.watermark_mode === 'centered' ? 'centered' : 'grid')
 const saving = ref(false)
 
 // Watermark
@@ -61,7 +62,8 @@ async function save() {
         photo_price_cents: String(photoPriceCents.value),
         watermark_size: String(watermarkSize.value),
         watermark_spacing: String(watermarkSpacing.value),
-        watermark_opacity: String(watermarkOpacity.value)
+        watermark_opacity: String(watermarkOpacity.value),
+        watermark_mode: watermarkMode.value
       }
     })
     await refresh()
@@ -209,6 +211,34 @@ async function save() {
               </div>
 
               <div class="border-t border-default pt-4 space-y-4">
+              <!-- Mode -->
+              <div class="space-y-2">
+                <label class="text-sm font-medium">Mode d'affichage</label>
+                <div class="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    class="flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border-2 transition-colors"
+                    :class="watermarkMode === 'centered' ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
+                    @click="watermarkMode = 'centered'"
+                  >
+                    <UIcon name="i-lucide-maximize" class="size-5" />
+                    <span class="text-xs font-medium">Centré</span>
+                    <span class="text-[10px] text-muted text-center leading-tight">Un seul watermark, grand et centré</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border-2 transition-colors"
+                    :class="watermarkMode === 'grid' ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
+                    @click="watermarkMode = 'grid'"
+                  >
+                    <UIcon name="i-lucide-grid-2x2" class="size-5" />
+                    <span class="text-xs font-medium">Grille</span>
+                    <span class="text-[10px] text-muted text-center leading-tight">Watermark répété en mosaïque</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Taille -->
               <div class="space-y-2">
                 <div class="flex items-center justify-between">
                   <label class="text-sm">Taille</label>
@@ -218,7 +248,7 @@ async function save() {
                   v-model.number="watermarkSize"
                   type="range"
                   min="5"
-                  max="50"
+                  :max="watermarkMode === 'centered' ? 100 : 50"
                   step="1"
                   class="w-full h-1.5 accent-stone-600 cursor-pointer"
                 >
@@ -227,7 +257,8 @@ async function save() {
                 </p>
               </div>
 
-              <div class="space-y-2">
+              <!-- Espacement (grille uniquement) -->
+              <div v-if="watermarkMode === 'grid'" class="space-y-2">
                 <div class="flex items-center justify-between">
                   <label class="text-sm">Espacement</label>
                   <span class="text-sm font-medium tabular-nums">{{ watermarkSpacing }}%</span>
@@ -245,6 +276,7 @@ async function save() {
                 </p>
               </div>
 
+              <!-- Opacité -->
               <div class="space-y-2">
                 <div class="flex items-center justify-between">
                   <label class="text-sm">Opacité</label>

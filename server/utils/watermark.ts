@@ -7,12 +7,13 @@ export const WATERMARK_S3_KEY = 'settings/watermark.png'
 
 async function getWatermarkSettings() {
   const rows = await db.select().from(settings)
-    .where(inArray(settings.key, ['watermark_size', 'watermark_spacing', 'watermark_opacity']))
+    .where(inArray(settings.key, ['watermark_size', 'watermark_spacing', 'watermark_opacity', 'watermark_mode']))
   const map = Object.fromEntries(rows.map(r => [r.key, r.value]))
   return {
     sizePct: Number(map.watermark_size ?? 15) / 100,
     spacingPct: Number(map.watermark_spacing ?? 60) / 100,
-    opacityPct: Number(map.watermark_opacity ?? 40) / 100
+    opacityPct: Number(map.watermark_opacity ?? 40) / 100,
+    mode: (map.watermark_mode ?? 'grid') as 'grid' | 'centered'
   }
 }
 
@@ -25,13 +26,42 @@ export async function applyWatermark(imageBuffer: Buffer | Uint8Array): Promise<
   const watermark = await blobGet(WATERMARK_S3_KEY)
   if (!watermark) return Buffer.from(imageBuffer)
 
-  const { sizePct, spacingPct, opacityPct } = await getWatermarkSettings()
+  const { sizePct, spacingPct, opacityPct, mode } = await getWatermarkSettings()
 
   const image = sharp(imageBuffer)
   const metadata = await image.metadata()
   const imgWidth = metadata.width || 1920
   const imgHeight = metadata.height || 1080
 
+  if (mode === 'centered') {
+    // Centered mode: size based on the smaller image dimension so the watermark
+    // fills a large portion of the image regardless of orientation
+    const targetDim = Math.round(Math.min(imgWidth, imgHeight) * sizePct)
+
+    const centeredWm = await sharp(watermark)
+      .resize({ width: targetDim, height: targetDim, fit: 'inside', withoutEnlargement: false })
+      .ensureAlpha()
+      .composite([{
+        input: Buffer.from([0, 0, 0, Math.round(255 * opacityPct)]),
+        raw: { width: 1, height: 1, channels: 4 },
+        tile: true,
+        blend: 'dest-in'
+      }])
+      .toBuffer()
+
+    const wmMeta = await sharp(centeredWm).metadata()
+    const wmW = wmMeta.width || 1
+    const wmH = wmMeta.height || 1
+    const left = Math.round((imgWidth - wmW) / 2)
+    const top = Math.round((imgHeight - wmH) / 2)
+
+    return image
+      .composite([{ input: centeredWm, left, top, blend: 'over' }])
+      .jpeg({ quality: 95 })
+      .toBuffer()
+  }
+
+  // Grid mode: repeating watermark pattern
   const wmWidth = Math.round(imgWidth * sizePct)
 
   const resizedWatermark = await sharp(watermark)
