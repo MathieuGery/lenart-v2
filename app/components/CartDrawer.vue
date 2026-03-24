@@ -380,7 +380,7 @@ async function submitOrder() {
                         >
                           <UIcon name="i-lucide-credit-card" class="size-4" />
                           <span class="font-medium text-xs">En ligne</span>
-                          <span class="text-[10px] text-muted text-center leading-tight">Paiement sécurisé Mollie</span>
+                          <span class="text-[10px] text-muted text-center leading-tight">Paiement sécurisé CB</span>
                         </button>
                         <button
                           type="button"

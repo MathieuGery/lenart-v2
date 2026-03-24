@@ -62,14 +62,6 @@ const links = [
                 {{ cart.count.value }}
               </span>
             </button>
-            <UButton
-              to="/login"
-              variant="ghost"
-              color="neutral"
-              size="sm"
-            >
-              Connexion
-            </UButton>
           </div>
         </div>
       </div>
@@ -95,9 +87,14 @@ const links = [
               <UIcon name="i-lucide-instagram" class="size-4" />
             </a>
           </div>
-          <p class="text-xs text-muted">
-            &copy; {{ new Date().getFullYear() }} Len-Art — Tous droits réservés
-          </p>
+          <div class="flex items-center gap-3">
+            <p class="text-xs text-muted">
+              &copy; {{ new Date().getFullYear() }} Len-Art — Tous droits réservés
+            </p>
+            <NuxtLink to="/login" class="text-xs text-muted/50 hover:text-muted transition-colors">
+              Admin
+            </NuxtLink>
+          </div>
         </div>
       </div>
     </footer>
