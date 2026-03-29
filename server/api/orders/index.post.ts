@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import { eq, inArray } from 'drizzle-orm'
-import { photos, orders, orderItems, pricingFormulas } from '~~/server/database/schema'
+import { eq, sql, inArray } from 'drizzle-orm'
+import { photos, orders, orderItems, pricingFormulas, promoCodes } from '~~/server/database/schema'
 import { db } from '~~/server/utils/db'
 import { getPhotoPriceCents } from '~~/server/utils/settings'
 
@@ -14,6 +14,7 @@ const bodySchema = z.object({
     collectionId: z.string().uuid().nullable().optional()
   })).max(100).optional(),
   formulaId: z.string().uuid().optional(),
+  promoCode: z.string().max(50).optional(),
   paymentMethod: z.enum(['link', 'terminal', 'cash']),
   terminalId: z.string().optional()
 }).refine(d => d.paymentMethod !== 'terminal' || !!d.terminalId, {
@@ -70,6 +71,39 @@ export default defineEventHandler(async (event) => {
     totalCents = totalItems * priceCentsPerItem
   }
 
+  // Apply promo code
+  let discountCents = 0
+  let appliedPromoCode: string | undefined
+
+  if (body.promoCode) {
+    const code = body.promoCode.toUpperCase()
+    const [promo] = await db.select().from(promoCodes)
+      .where(eq(promoCodes.code, code)).limit(1)
+
+    if (!promo || !promo.isActive || promo.usageCount >= promo.maxUsage) {
+      throw createError({ statusCode: 400, message: 'Code promo invalide ou expiré' })
+    }
+
+    if (promo.formulaId && promo.formulaId !== body.formulaId) {
+      throw createError({ statusCode: 400, message: 'Ce code promo n\'est pas valable pour cette formule' })
+    }
+
+    if (promo.type === 'percentage') {
+      discountCents = Math.round(totalCents * promo.value / 100)
+    } else {
+      discountCents = Math.min(promo.value, totalCents)
+    }
+
+    totalCents = totalCents - discountCents
+    appliedPromoCode = code
+
+    await db.update(promoCodes)
+      .set({ usageCount: sql`${promoCodes.usageCount} + 1`, updatedAt: new Date() })
+      .where(eq(promoCodes.id, promo.id))
+  }
+
+  if (totalCents < 0) totalCents = 0
+
   // Create order
   const [order] = await db.insert(orders).values({
     email: body.email,
@@ -77,6 +111,8 @@ export default defineEventHandler(async (event) => {
     lastName: body.lastName,
     totalCents,
     formulaName,
+    promoCode: appliedPromoCode,
+    discountCents,
     cashPayment: body.paymentMethod === 'cash',
     status: 'pending'
   }).returning()
@@ -136,6 +172,12 @@ export default defineEventHandler(async (event) => {
     cashPayment: body.paymentMethod === 'cash',
     isFree: false
   }).catch(() => {})
+
+  // Free order (100% promo) — mark as paid immediately
+  if (totalCents === 0 && appliedPromoCode) {
+    await db.update(orders).set({ status: 'paid' }).where(eq(orders.id, order.id))
+    return { orderId: order.id, checkoutUrl: null }
+  }
 
   // Cash payment — no Mollie involved
   if (body.paymentMethod === 'cash') {

@@ -160,6 +160,51 @@ function removeFilename(index: number) {
   photoItems.value.splice(index, 1)
 }
 
+// Promo code
+const promoInput = ref('')
+const promoLoading = ref(false)
+const promoError = ref<string | null>(null)
+const appliedPromo = ref<{ code: string, type: 'percentage' | 'fixed', value: number } | null>(null)
+
+const discountCents = computed(() => {
+  if (!appliedPromo.value) return 0
+  const total = Number(totalEuros.value) * 100
+  if (appliedPromo.value.type === 'percentage') {
+    return Math.round(total * appliedPromo.value.value / 100)
+  }
+  return Math.min(appliedPromo.value.value, total)
+})
+
+const finalTotalCents = computed(() => Math.max(0, Math.round(Number(totalEuros.value) * 100) - discountCents.value))
+
+async function validatePromo() {
+  promoError.value = null
+  const code = promoInput.value.trim()
+  if (!code) return
+  promoLoading.value = true
+  try {
+    const result = await $fetch<{ valid: boolean, message?: string, code?: string, type?: string, value?: number }>('/api/public/promo-code/validate', {
+      method: 'POST',
+      body: { code, formulaId: form.formulaId || undefined }
+    })
+    if (result.valid) {
+      appliedPromo.value = { code: result.code!, type: result.type as 'percentage' | 'fixed', value: result.value! }
+    } else {
+      promoError.value = result.message ?? 'Code invalide'
+    }
+  } catch {
+    promoError.value = 'Erreur de validation'
+  } finally {
+    promoLoading.value = false
+  }
+}
+
+function removePromo() {
+  appliedPromo.value = null
+  promoInput.value = ''
+  promoError.value = null
+}
+
 // Terminals
 const { data: terminals } = await useFetch<Terminal[]>('/api/orders/terminals')
 
@@ -176,6 +221,9 @@ function openModal() {
   showDropdown.value = false
   selectedCollectionId.value = undefined
   selectedCollectionLabel.value = 'Toutes les collections'
+  promoInput.value = ''
+  promoError.value = null
+  appliedPromo.value = null
   step.value = 'info'
   emailTouched.value = false
   createdCheckoutUrl.value = null
@@ -218,12 +266,16 @@ async function createOrder() {
         photoIds: linkedIds.length ? linkedIds : undefined,
         photoFilenames: unlinkedItems.length ? unlinkedItems : undefined,
         formulaId: form.formulaId || undefined,
+        promoCode: appliedPromo.value?.code || undefined,
         paymentMethod: form.paymentMethod,
         terminalId: form.terminalId || undefined
       }
     })
     await refresh()
-    if (form.paymentMethod === 'link' && result.checkoutUrl) {
+    if (finalTotalCents.value === 0 && appliedPromo.value) {
+      toast.add({ title: 'Commande offerte (code promo 100%) — marquée payée', color: 'success' })
+      modalOpen.value = false
+    } else if (form.paymentMethod === 'link' && result.checkoutUrl) {
       createdCheckoutUrl.value = result.checkoutUrl
     } else if (form.paymentMethod === 'cash') {
       toast.add({ title: 'Commande enregistrée — paiement en espèces', color: 'success' })
@@ -837,9 +889,60 @@ const filteredOrders = computed(() => {
           </template>
 
           <template v-else>
-            <p class="text-sm font-medium mb-4">
+            <p class="text-sm font-medium mb-1">
               {{ photoFilenames.length }} photo{{ photoFilenames.length !== 1 ? 's' : '' }} — {{ totalEuros }} €
             </p>
+            <p v-if="appliedPromo" class="text-sm font-medium text-green-600 dark:text-green-400 mb-4">
+              Remise : -{{ (discountCents / 100).toFixed(2) }} € → {{ (finalTotalCents / 100).toFixed(2) }} €
+            </p>
+            <p v-else class="mb-4" />
+
+            <!-- Promo code -->
+            <div class="mb-5">
+              <label class="text-xs font-medium">Code promo</label>
+              <template v-if="appliedPromo">
+                <div class="flex items-center gap-2 mt-1.5">
+                  <UBadge color="success" variant="subtle" size="sm">
+                    <UIcon name="i-lucide-ticket" class="size-3 mr-1" />
+                    {{ appliedPromo.code }}
+                    <span class="ml-1 text-muted">
+                      ({{ appliedPromo.type === 'percentage' ? `-${appliedPromo.value}%` : `-${(appliedPromo.value / 100).toFixed(2)} €` }})
+                    </span>
+                  </UBadge>
+                  <UButton
+                    icon="i-lucide-x"
+                    color="neutral"
+                    variant="ghost"
+                    size="xs"
+                    square
+                    @click="removePromo"
+                  />
+                </div>
+              </template>
+              <template v-else>
+                <div class="flex gap-2 mt-1.5">
+                  <UInput
+                    v-model="promoInput"
+                    placeholder="Entrer un code"
+                    size="sm"
+                    class="flex-1"
+                    @keydown.enter.prevent="validatePromo"
+                  />
+                  <UButton
+                    color="neutral"
+                    variant="outline"
+                    size="sm"
+                    :disabled="!promoInput.trim() || promoLoading"
+                    @click="validatePromo"
+                  >
+                    {{ promoLoading ? '…' : 'Appliquer' }}
+                  </UButton>
+                </div>
+                <p v-if="promoError" class="text-xs text-red-500 mt-1">
+                  {{ promoError }}
+                </p>
+              </template>
+            </div>
 
             <!-- Method selection -->
             <div class="grid grid-cols-3 gap-3 mb-5">
