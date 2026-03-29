@@ -83,29 +83,6 @@ watch(() => order.value?.status, (s) => {
               <span>{{ (order.totalCents / 100).toFixed(2) }} €</span>
             </div>
           </div>
-
-          <!-- Download links -->
-          <h2 class="text-sm font-medium mb-4">
-            Télécharger vos photos
-          </h2>
-          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <a
-              v-for="photo in order.photos"
-              :key="photo.id"
-              :href="photo.url"
-              :download="photo.filename"
-              class="group relative aspect-4/3 overflow-hidden rounded bg-muted/10 block"
-            >
-              <img
-                :src="photo.url"
-                :alt="photo.filename"
-                class="size-full object-cover transition-all duration-200 group-hover:brightness-75"
-              >
-              <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <UIcon name="i-lucide-download" class="size-6 text-white" />
-              </div>
-            </a>
-          </div>
         </template>
 
         <!-- Pending -->
