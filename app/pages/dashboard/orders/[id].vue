@@ -197,7 +197,9 @@ function editSelectPhoto(result: { id: string, filename: string, collectionId: s
 }
 
 function hideEditDropdown() {
-  setTimeout(() => { editShowDropdown.value = false }, 200)
+  setTimeout(() => {
+    editShowDropdown.value = false
+  }, 200)
 }
 
 // Settings (photo price)
@@ -290,6 +292,61 @@ function addEditFilename() {
 
 function removeEditFilename(index: number) {
   editPhotoItems.value.splice(index, 1)
+}
+
+// Convert payment
+const convertStep = ref<'idle' | 'link' | 'terminal'>('idle')
+const convertLoading = ref(false)
+const convertUrl = ref<string | null>(null)
+const terminals = ref<Terminal[]>([])
+const terminalsLoading = ref(false)
+const selectedTerminalId = ref('')
+
+async function fetchTerminals() {
+  terminalsLoading.value = true
+  try {
+    terminals.value = await $fetch<Terminal[]>('/api/orders/terminals')
+  } catch {
+    toast.add({ title: 'Erreur lors du chargement des terminaux', color: 'error' })
+  } finally {
+    terminalsLoading.value = false
+  }
+}
+
+async function convertToLink() {
+  convertLoading.value = true
+  try {
+    const result = await $fetch<{ checkoutUrl: string | null }>(`/api/orders/${id}/convert-payment`, {
+      method: 'POST',
+      body: { paymentMethod: 'link' }
+    })
+    convertUrl.value = result.checkoutUrl
+    await refresh()
+    toast.add({ title: 'Lien de paiement créé', color: 'success' })
+  } catch {
+    toast.add({ title: 'Erreur lors de la conversion', color: 'error' })
+  } finally {
+    convertLoading.value = false
+  }
+}
+
+async function convertToTerminal() {
+  if (!selectedTerminalId.value) return
+  convertLoading.value = true
+  try {
+    await $fetch(`/api/orders/${id}/convert-payment`, {
+      method: 'POST',
+      body: { paymentMethod: 'terminal', terminalId: selectedTerminalId.value }
+    })
+    await refresh()
+    convertStep.value = 'idle'
+    selectedTerminalId.value = ''
+    toast.add({ title: 'Paiement envoyé au terminal', color: 'success' })
+  } catch {
+    toast.add({ title: 'Erreur lors de l\'envoi au terminal', color: 'error' })
+  } finally {
+    convertLoading.value = false
+  }
 }
 
 async function saveEdit() {
@@ -476,6 +533,168 @@ async function saveEdit() {
                 Appliquer
               </UButton>
             </div>
+          </div>
+
+          <!-- Convert payment (cash + pending only) -->
+          <div
+            v-if="(order.cashPayment && order.status === 'pending') || convertUrl"
+            class="border border-default rounded-lg p-5"
+          >
+            <h2 class="text-sm font-medium mb-1">
+              Convertir le paiement
+            </h2>
+            <p class="text-xs text-muted mb-4">
+              Passez cette commande espèces en paiement en ligne ou via TPE Mollie.
+            </p>
+
+            <!-- Idle: choose method -->
+            <template v-if="convertStep === 'idle' && !convertUrl">
+              <div class="flex flex-wrap gap-2">
+                <UButton
+                  size="sm"
+                  color="neutral"
+                  variant="outline"
+                  icon="i-lucide-link"
+                  @click="convertStep = 'link'"
+                >
+                  Lien de paiement
+                </UButton>
+                <UButton
+                  size="sm"
+                  color="neutral"
+                  variant="outline"
+                  icon="i-lucide-monitor"
+                  @click="convertStep = 'terminal'; fetchTerminals()"
+                >
+                  Terminal (TPE)
+                </UButton>
+              </div>
+            </template>
+
+            <!-- Link: confirm -->
+            <template v-else-if="convertStep === 'link' && !convertUrl">
+              <p class="text-sm text-muted mb-4">
+                Un lien de paiement Mollie sera créé et pourra être partagé avec le client.
+              </p>
+              <div class="flex gap-2">
+                <UButton
+                  size="sm"
+                  color="neutral"
+                  variant="ghost"
+                  @click="convertStep = 'idle'"
+                >
+                  Annuler
+                </UButton>
+                <UButton
+                  size="sm"
+                  color="neutral"
+                  icon="i-lucide-link"
+                  :loading="convertLoading"
+                  @click="convertToLink"
+                >
+                  Créer le lien
+                </UButton>
+              </div>
+            </template>
+
+            <!-- Link: URL result -->
+            <template v-else-if="convertUrl">
+              <p class="text-xs text-muted mb-2">
+                Lien de paiement créé — partagez-le avec le client :
+              </p>
+              <div class="flex items-center gap-2">
+                <UInput
+                  :model-value="convertUrl"
+                  readonly
+                  size="sm"
+                  class="flex-1 font-mono text-xs"
+                />
+                <UButton
+                  size="sm"
+                  color="neutral"
+                  variant="ghost"
+                  icon="i-lucide-copy"
+                  square
+                  @click="navigator.clipboard.writeText(convertUrl!); toast.add({ title: 'Copié !', duration: 1500 })"
+                />
+                <a :href="convertUrl" target="_blank" class="shrink-0">
+                  <UButton
+                    size="sm"
+                    color="neutral"
+                    variant="ghost"
+                    icon="i-lucide-external-link"
+                    square
+                  />
+                </a>
+              </div>
+              <UButton
+                class="mt-3"
+                size="sm"
+                color="neutral"
+                variant="ghost"
+                @click="convertUrl = null; convertStep = 'idle'"
+              >
+                Fermer
+              </UButton>
+            </template>
+
+            <!-- Terminal: select -->
+            <template v-else-if="convertStep === 'terminal'">
+              <div v-if="terminalsLoading" class="text-sm text-muted py-2">
+                Chargement des terminaux…
+              </div>
+              <template v-else>
+                <p v-if="!terminals.length" class="text-sm text-muted mb-3">
+                  Aucun terminal disponible.
+                </p>
+                <div v-else class="space-y-2 mb-4">
+                  <button
+                    v-for="t in terminals"
+                    :key="t.id"
+                    type="button"
+                    class="w-full flex items-center gap-3 p-3 rounded-lg border-2 text-left transition-colors"
+                    :class="selectedTerminalId === t.id ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
+                    @click="selectedTerminalId = t.id"
+                  >
+                    <UIcon name="i-lucide-monitor" class="size-4 text-muted shrink-0" />
+                    <div>
+                      <p class="text-sm font-medium">
+                        {{ t.description || [t.brand, t.model].filter(Boolean).join(' ') || t.id }}
+                      </p>
+                      <p v-if="t.serialNumber" class="text-xs text-muted">
+                        {{ t.serialNumber }}
+                      </p>
+                    </div>
+                    <div
+                      v-if="selectedTerminalId === t.id"
+                      class="ml-auto size-5 rounded-full bg-primary flex items-center justify-center shrink-0"
+                    >
+                      <UIcon name="i-lucide-check" class="size-3 text-white" />
+                    </div>
+                  </button>
+                </div>
+                <div class="flex gap-2">
+                  <UButton
+                    size="sm"
+                    color="neutral"
+                    variant="ghost"
+                    @click="convertStep = 'idle'; selectedTerminalId = ''"
+                  >
+                    Annuler
+                  </UButton>
+                  <UButton
+                    size="sm"
+                    color="neutral"
+                    icon="i-lucide-send"
+                    :loading="convertLoading"
+                    :disabled="!selectedTerminalId || !terminals.length"
+                    @click="convertToTerminal"
+                  >
+                    Envoyer au terminal
+                  </UButton>
+                </div>
+              </template>
+            </template>
           </div>
 
           <!-- Business status -->
