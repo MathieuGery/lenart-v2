@@ -469,7 +469,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
       >
         <div
           v-if="cart.count.value > 0"
-          class="fixed bottom-6 left-4 right-4 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-auto z-40 flex items-center justify-between gap-3 px-5 py-3 rounded-full bg-default shadow-lg border border-default"
+          class="fixed left-4 right-4 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-auto z-40 flex items-center justify-between gap-3 px-5 py-3 rounded-full bg-default shadow-lg border border-default"
+          style="bottom: max(1.5rem, calc(env(safe-area-inset-bottom) + 0.5rem))"
         >
           <span class="text-sm whitespace-nowrap">
             <span class="font-medium">{{ cart.count.value }}</span>
