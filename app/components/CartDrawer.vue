@@ -400,6 +400,28 @@ async function submitOrder() {
                     Commande offerte — aucun paiement requis
                   </div>
 
+                  <div class="pt-1">
+                    <UButton
+                      type="submit"
+                      block
+                      color="neutral"
+                      size="md"
+                      :loading="loading"
+                      :trailing-icon="finalTotalCents === 0 ? 'i-lucide-check' : form.paymentMethod === 'cash' ? 'i-lucide-check' : 'i-lucide-credit-card'"
+                    >
+                      {{ finalTotalCents === 0 ? 'Confirmer la commande' : form.paymentMethod === 'cash' ? 'Confirmer la réservation' : `Payer ${(finalTotalCents / 100).toFixed(2)} € via Mollie` }}
+                    </UButton>
+                    <p v-if="finalTotalCents === 0" class="text-center text-xs text-muted/60 mt-2">
+                      Offert grâce à votre code promo
+                    </p>
+                    <p v-else-if="form.paymentMethod === 'online'" class="text-center text-xs text-muted/60 mt-2">
+                      Paiement sécurisé
+                    </p>
+                    <p v-else class="text-center text-xs text-muted/60 mt-2">
+                      Réglez en espèces directement au stand
+                    </p>
+                  </div>
+
                   <div class="grid grid-cols-2 gap-3">
                     <div class="space-y-1.5">
                       <label class="text-xs font-medium">Prénom</label>
@@ -489,28 +511,6 @@ async function submitOrder() {
                     class="text-xs text-red-500"
                   >
                     {{ error }}
-                  </p>
-                </div>
-
-                <div class="p-4 border-t border-default">
-                  <UButton
-                    type="submit"
-                    block
-                    color="neutral"
-                    size="md"
-                    :loading="loading"
-                    :trailing-icon="finalTotalCents === 0 ? 'i-lucide-check' : form.paymentMethod === 'cash' ? 'i-lucide-check' : 'i-lucide-credit-card'"
-                  >
-                    {{ finalTotalCents === 0 ? 'Confirmer la commande' : form.paymentMethod === 'cash' ? 'Confirmer la réservation' : `Payer ${(finalTotalCents / 100).toFixed(2)} € via Mollie` }}
-                  </UButton>
-                  <p v-if="finalTotalCents === 0" class="text-center text-xs text-muted/60 mt-2">
-                    Offert grâce à votre code promo
-                  </p>
-                  <p v-else-if="form.paymentMethod === 'online'" class="text-center text-xs text-muted/60 mt-2">
-                    Paiement sécurisé
-                  </p>
-                  <p v-else class="text-center text-xs text-muted/60 mt-2">
-                    Réglez en espèces directement au stand
                   </p>
                 </div>
               </form>
