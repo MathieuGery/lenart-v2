@@ -27,6 +27,14 @@ const links = [[{
   }
 },
 {
+  label: 'Défilement',
+  icon: 'i-lucide-arrow-left-right',
+  to: '/dashboard/orders/review',
+  onSelect: () => {
+    open.value = false
+  }
+},
+{
   label: 'Galeries',
   icon: 'i-lucide-lock',
   to: '/dashboard/galleries',
