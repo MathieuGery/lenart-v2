@@ -2,14 +2,16 @@
 FROM node:24-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci --prefer-offline
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --prefer-offline
 
 # Stage 2: Build
 FROM node:24-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . ./
-RUN npm run build
+RUN --mount=type=cache,target=/root/.npm \
+    npm run build
 
 # Stage 3: Production
 FROM node:24-alpine AS production
