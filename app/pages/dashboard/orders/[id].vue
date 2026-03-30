@@ -244,6 +244,36 @@ const editTotalEuros = computed(() => {
   return ((count * priceCents) / 100).toFixed(2)
 })
 
+// Print photo selection in edit mode
+// { type: 'linked', photoId: string } | { type: 'deferred', filename: string } | null
+const editPrintSelection = ref<{ type: 'linked', photoId: string } | { type: 'deferred', filename: string } | null>(null)
+
+const editHasPrint = computed(() => !!selectedFormula.value?.printDetails)
+
+function setEditPrintPhoto(item: EditPhotoItem) {
+  if (item.photoId) {
+    if (editPrintSelection.value?.type === 'linked' && editPrintSelection.value.photoId === item.photoId) {
+      editPrintSelection.value = null
+    } else {
+      editPrintSelection.value = { type: 'linked', photoId: item.photoId }
+    }
+  } else {
+    if (editPrintSelection.value?.type === 'deferred' && editPrintSelection.value.filename === item.filename) {
+      editPrintSelection.value = null
+    } else {
+      editPrintSelection.value = { type: 'deferred', filename: item.filename }
+    }
+  }
+}
+
+function isEditPrintSelected(item: EditPhotoItem) {
+  if (!editPrintSelection.value) return false
+  if (item.photoId) {
+    return editPrintSelection.value.type === 'linked' && editPrintSelection.value.photoId === item.photoId
+  }
+  return editPrintSelection.value.type === 'deferred' && editPrintSelection.value.filename === item.filename
+}
+
 function startEditing() {
   if (!order.value) return
   editForm.firstName = order.value.firstName
@@ -260,6 +290,15 @@ function startEditing() {
       collectionId: p.collectionId ?? null,
       collectionName: p.collectionName ?? null
     }))
+  // Restore print photo selection from order
+  const pp = order.value.printPhoto
+  if (pp?.linked && pp.id) {
+    editPrintSelection.value = { type: 'linked', photoId: pp.id }
+  } else if (pp?.filename) {
+    editPrintSelection.value = { type: 'deferred', filename: pp.filename }
+  } else {
+    editPrintSelection.value = null
+  }
   editFilenameInput.value = ''
   editSearchResults.value = []
   editShowDropdown.value = false
@@ -358,6 +397,20 @@ async function saveEdit() {
       collectionId: p.collectionId
     }))
 
+    const printBody: Record<string, unknown> = {}
+    if (editHasPrint.value) {
+      if (editPrintSelection.value?.type === 'linked') {
+        printBody.printPhotoId = editPrintSelection.value.photoId
+        printBody.printPhotoFilename = null
+      } else if (editPrintSelection.value?.type === 'deferred') {
+        printBody.printPhotoFilename = editPrintSelection.value.filename
+        printBody.printPhotoId = null
+      } else {
+        printBody.printPhotoId = null
+        printBody.printPhotoFilename = null
+      }
+    }
+
     await $fetch(`/api/orders/${id}`, {
       method: 'PATCH',
       body: {
@@ -366,7 +419,8 @@ async function saveEdit() {
         email: editForm.email,
         formulaId: editForm.formulaId || null,
         photoIds: linkedIds.length ? linkedIds : undefined,
-        photoFilenames: unlinkedItems.length ? unlinkedItems : undefined
+        photoFilenames: unlinkedItems.length ? unlinkedItems : undefined,
+        ...printBody
       }
     })
     await refresh()
@@ -819,6 +873,43 @@ async function deleteComment(commentId: string) {
             </p>
           </div>
 
+          <!-- Print photo -->
+          <div v-if="order.printPhoto" class="border border-default rounded-lg p-5">
+            <div class="flex items-center gap-1.5 mb-3">
+              <UIcon name="i-lucide-printer" class="size-4 text-muted" />
+              <h2 class="text-sm font-medium">
+                Photo à imprimer
+              </h2>
+            </div>
+            <div class="flex items-center gap-3">
+              <a
+                v-if="order.printPhoto.linked && order.printPhoto.url"
+                :href="order.printPhoto.url"
+                target="_blank"
+                class="relative size-16 rounded overflow-hidden bg-muted/10 shrink-0 block group"
+              >
+                <img :src="order.printPhoto.url" :alt="order.printPhoto.filename ?? ''" class="size-full object-cover group-hover:brightness-75 transition-all">
+                <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <UIcon name="i-lucide-external-link" class="size-3.5 text-white" />
+                </div>
+              </a>
+              <div
+                v-else
+                class="size-16 rounded border-2 border-dashed border-default flex items-center justify-center bg-muted/5 shrink-0"
+              >
+                <UIcon name="i-lucide-image-off" class="size-4 text-muted" />
+              </div>
+              <div>
+                <p class="text-sm font-medium">
+                  {{ order.printPhoto.filename ?? '—' }}
+                </p>
+                <p class="text-xs text-muted mt-0.5">
+                  {{ order.printPhoto.linked ? 'Photo liée' : 'Liaison en attente' }}
+                </p>
+              </div>
+            </div>
+          </div>
+
           <!-- Amazon link -->
           <div class="border border-default rounded-lg p-5">
             <h2 class="text-sm font-medium mb-3">
@@ -1146,6 +1237,45 @@ async function deleteComment(commentId: string) {
                 dont {{ editPhotoItems.length - selectedFormula.digitalPhotosCount }} supplémentaire{{ editPhotoItems.length - selectedFormula.digitalPhotosCount !== 1 ? 's' : '' }}
                 (+{{ (((editPhotoItems.length - selectedFormula.digitalPhotosCount) * selectedFormula.extraPhotoPriceCents) / 100).toFixed(2) }} €)
               </p>
+            </div>
+          </div>
+
+          <!-- Print photo picker -->
+          <div v-if="editHasPrint && editPhotoItems.length > 0" class="border border-default rounded-lg p-5 space-y-3">
+            <div class="flex items-center gap-1.5">
+              <UIcon name="i-lucide-printer" class="size-4 text-muted" />
+              <h2 class="text-sm font-medium">
+                Photo à imprimer
+                <span class="text-xs font-normal text-muted ml-1">({{ selectedFormula?.printDetails }})</span>
+              </h2>
+            </div>
+            <p class="text-xs text-muted">
+              Sélectionnez la photo qui sera imprimée physiquement.
+            </p>
+            <div class="space-y-1.5 max-h-60 overflow-y-auto">
+              <button
+                v-for="(item, idx) in editPhotoItems"
+                :key="idx"
+                type="button"
+                class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border-2 text-left transition-colors text-sm"
+                :class="isEditPrintSelected(item)
+                  ? 'border-primary bg-primary/5'
+                  : 'border-default hover:border-muted'"
+                @click="setEditPrintPhoto(item)"
+              >
+                <UIcon
+                  :name="item.photoId ? 'i-lucide-image' : 'i-lucide-image-off'"
+                  class="size-3.5 shrink-0"
+                  :class="item.photoId ? 'text-success' : 'text-muted'"
+                />
+                <span class="flex-1 truncate text-xs">{{ item.filename }}</span>
+                <div
+                  v-if="isEditPrintSelected(item)"
+                  class="size-5 rounded-full bg-primary flex items-center justify-center shrink-0"
+                >
+                  <UIcon name="i-lucide-printer" class="size-2.5 text-white" />
+                </div>
+              </button>
             </div>
           </div>
         </template>

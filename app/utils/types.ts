@@ -101,6 +101,13 @@ export interface OrderPhoto {
   url: string | null
 }
 
+export interface OrderPrintPhoto {
+  id: string | null
+  filename: string | null
+  linked: boolean
+  url: string | null
+}
+
 export interface OrderDetail {
   id: string
   email: string
@@ -124,6 +131,7 @@ export interface OrderDetail {
   createdAt: string
   updatedAt: string
   photos: OrderPhoto[]
+  printPhoto: OrderPrintPhoto | null
 }
 
 export interface OrderListItem {
@@ -184,4 +192,5 @@ export interface PricingFormula {
   digitalPhotosCount: number
   extraPhotoPriceCents: number | null
   isTourComplete: boolean
+  printDetails: string | null
 }

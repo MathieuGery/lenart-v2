@@ -211,6 +211,13 @@
       "when": 1774866778189,
       "tag": "0029_dear_rage",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1774878600773,
+      "tag": "0030_shallow_riptide",
+      "breakpoints": true
     }
   ]
 }

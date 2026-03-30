@@ -43,6 +43,8 @@ const photoItems = ref<PhotoItem[]>([])
 const filenameInput = ref('')
 const creating = ref(false)
 const createdCheckoutUrl = ref<string | null>(null)
+// Print photo selection: linked photoId or deferred filename
+const printSelection = ref<{ type: 'linked', photoId: string } | { type: 'deferred', filename: string } | null>(null)
 
 // Photo search
 const searchResults = ref<{ id: string, filename: string, collectionId: string, collectionName: string }[]>([])
@@ -157,7 +159,13 @@ function addFilename() {
 }
 
 function removeFilename(index: number) {
+  const removed = photoItems.value[index]
   photoItems.value.splice(index, 1)
+  if (removed) {
+    const sel = printSelection.value
+    if (sel?.type === 'linked' && sel.photoId === removed.photoId) printSelection.value = null
+    else if (sel?.type === 'deferred' && sel.filename === removed.filename) printSelection.value = null
+  }
 }
 
 // Promo code
@@ -224,6 +232,7 @@ function openModal() {
   promoInput.value = ''
   promoError.value = null
   appliedPromo.value = null
+  printSelection.value = null
   step.value = 'info'
   emailTouched.value = false
   createdCheckoutUrl.value = null
@@ -248,6 +257,24 @@ const totalEuros = computed(() => {
   return ((count * priceCents) / 100).toFixed(2)
 })
 
+const hasPrint = computed(() => !!selectedFormula.value?.printDetails)
+
+function isPrintSelected(item: PhotoItem) {
+  if (!printSelection.value) return false
+  if (item.photoId) return printSelection.value.type === 'linked' && printSelection.value.photoId === item.photoId
+  return printSelection.value.type === 'deferred' && printSelection.value.filename === item.filename
+}
+
+function togglePrintSelection(item: PhotoItem) {
+  if (isPrintSelected(item)) {
+    printSelection.value = null
+  } else if (item.photoId) {
+    printSelection.value = { type: 'linked', photoId: item.photoId }
+  } else {
+    printSelection.value = { type: 'deferred', filename: item.filename }
+  }
+}
+
 async function createOrder() {
   creating.value = true
   try {
@@ -256,6 +283,15 @@ async function createOrder() {
       filename: p.filename,
       collectionId: p.collectionId
     }))
+
+    const printBody: Record<string, unknown> = {}
+    if (hasPrint.value && printSelection.value) {
+      if (printSelection.value.type === 'linked') {
+        printBody.printPhotoId = printSelection.value.photoId
+      } else {
+        printBody.printPhotoFilename = printSelection.value.filename
+      }
+    }
 
     const result = await $fetch<{ orderId: string, checkoutUrl: string | null }>('/api/orders', {
       method: 'POST',
@@ -267,6 +303,7 @@ async function createOrder() {
         photoFilenames: unlinkedItems.length ? unlinkedItems : undefined,
         formulaId: form.formulaId || undefined,
         promoCode: appliedPromo.value?.code || undefined,
+        ...printBody,
         paymentMethod: form.paymentMethod,
         terminalId: form.terminalId || undefined
       }
@@ -911,6 +948,40 @@ const filteredOrders = computed(() => {
                 dont {{ photoItems.length - selectedFormula.digitalPhotosCount }} supplémentaire{{ photoItems.length - selectedFormula.digitalPhotosCount !== 1 ? 's' : '' }}
                 (+{{ (((photoItems.length - selectedFormula.digitalPhotosCount) * selectedFormula.extraPhotoPriceCents) / 100).toFixed(2) }} €)
               </p>
+            </div>
+
+            <!-- Print photo picker -->
+            <div v-if="hasPrint && photoItems.length > 0" class="space-y-2">
+              <div class="flex items-center gap-1.5">
+                <UIcon name="i-lucide-printer" class="size-3.5 text-muted" />
+                <label class="text-sm font-medium">
+                  Photo à imprimer
+                  <span class="text-xs font-normal text-muted ml-1">({{ selectedFormula?.printDetails }})</span>
+                </label>
+              </div>
+              <div class="space-y-1 max-h-40 overflow-y-auto">
+                <button
+                  v-for="(item, idx) in photoItems"
+                  :key="idx"
+                  type="button"
+                  class="w-full flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-left transition-colors text-sm"
+                  :class="isPrintSelected(item) ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
+                  @click="togglePrintSelection(item)"
+                >
+                  <UIcon
+                    :name="item.photoId ? 'i-lucide-image' : 'i-lucide-image-off'"
+                    class="size-3.5 shrink-0"
+                    :class="item.photoId ? 'text-success' : 'text-muted'"
+                  />
+                  <span class="flex-1 truncate text-xs">{{ item.filename }}</span>
+                  <div
+                    v-if="isPrintSelected(item)"
+                    class="size-5 rounded-full bg-primary flex items-center justify-center shrink-0"
+                  >
+                    <UIcon name="i-lucide-printer" class="size-2.5 text-white" />
+                  </div>
+                </button>
+              </div>
             </div>
           </div>
         </template>

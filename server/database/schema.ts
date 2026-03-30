@@ -55,6 +55,8 @@ export const orders = pgTable('orders', {
   photosEmailSentAt: timestamp('photos_email_sent_at'),
   createdByAdmin: boolean('created_by_admin'),
   totalCents: integer('total_cents').notNull(),
+  printPhotoId: uuid('print_photo_id').references(() => photos.id, { onDelete: 'set null' }),
+  printPhotoFilename: varchar('print_photo_filename', { length: 255 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 }, (table) => [

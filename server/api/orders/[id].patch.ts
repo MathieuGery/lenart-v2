@@ -20,7 +20,9 @@ const bodySchema = z.object({
     filename: z.string().min(1).max(255),
     collectionId: z.string().uuid().nullable().optional()
   })).optional(),
-  amazonLink: z.string().url().max(1000).nullable().optional()
+  amazonLink: z.string().url().max(1000).nullable().optional(),
+  printPhotoId: z.string().uuid().nullable().optional(),
+  printPhotoFilename: z.string().max(255).nullable().optional()
 })
 
 export default defineEventHandler(async (event) => {
@@ -40,6 +42,14 @@ export default defineEventHandler(async (event) => {
   if (body.lastName) orderUpdate.lastName = body.lastName
   if (body.email) orderUpdate.email = body.email
   if (body.amazonLink !== undefined) orderUpdate.amazonLink = body.amazonLink
+  if (body.printPhotoId !== undefined) {
+    orderUpdate.printPhotoId = body.printPhotoId
+    if (body.printPhotoId !== null) orderUpdate.printPhotoFilename = null
+  }
+  if (body.printPhotoFilename !== undefined) {
+    orderUpdate.printPhotoFilename = body.printPhotoFilename
+    if (body.printPhotoFilename !== null) orderUpdate.printPhotoId = null
+  }
 
   // Handle formula + photos change
   const hasPhotoChanges = body.photoIds !== undefined || body.photoFilenames !== undefined

@@ -19,6 +19,7 @@ export interface CartFormula {
 
 const ITEMS_KEY = 'lenart-cart'
 const FORMULA_KEY = 'lenart-cart-formula'
+const PRINT_KEY = 'lenart-cart-print'
 
 function readLocal<T>(key: string, fallback: T): T {
   if (!import.meta.client) return fallback
@@ -43,10 +44,12 @@ function writeLocal(key: string, value: unknown) {
 export const useCart = createSharedComposable(() => {
   const items = ref<CartItem[]>(readLocal<CartItem[]>(ITEMS_KEY, []))
   const formula = ref<CartFormula | null>(readLocal<CartFormula | null>(FORMULA_KEY, null))
+  const printPhotoId = ref<string | null>(readLocal<string | null>(PRINT_KEY, null))
   const isOpen = ref(false)
 
   watch(items, v => writeLocal(ITEMS_KEY, v), { deep: true })
   watch(formula, v => writeLocal(FORMULA_KEY, v), { deep: true })
+  watch(printPhotoId, v => writeLocal(PRINT_KEY, v))
 
   const count = computed(() => items.value.length)
 
@@ -78,6 +81,9 @@ export const useCart = createSharedComposable(() => {
 
   function removeFromCart(id: string) {
     items.value = items.value.filter(i => i.id !== id)
+    if (printPhotoId.value === id) {
+      printPhotoId.value = null
+    }
   }
 
   function toggleCart(item: CartItem) {
@@ -88,19 +94,26 @@ export const useCart = createSharedComposable(() => {
     }
   }
 
+  function setPrintPhoto(id: string | null) {
+    printPhotoId.value = id
+  }
+
   function setFormula(f: CartFormula) {
     formula.value = f
     items.value = []
+    printPhotoId.value = null
   }
 
   function clearCart() {
     items.value = []
     formula.value = null
+    printPhotoId.value = null
   }
 
   return {
     items,
     formula,
+    printPhotoId,
     count,
     totalCents,
     isOpen,
@@ -110,6 +123,7 @@ export const useCart = createSharedComposable(() => {
     toggleCart,
     clearCart,
     setFormula,
+    setPrintPhoto,
     canAddMore
   }
 })

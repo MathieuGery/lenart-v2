@@ -88,6 +88,7 @@ async function submitOrder() {
         formulaId: cart.formula.value?.id,
         paymentMethod: form.paymentMethod,
         promoCode: appliedPromo.value?.code,
+        printPhotoId: cart.printPhotoId.value ?? undefined,
         ...(form.paymentMethod === 'online' ? {
           address: form.address,
           city: form.city,
@@ -286,6 +287,44 @@ async function submitOrder() {
                 </div>
               </div>
 
+              <!-- Print photo selector -->
+              <div
+                v-if="cart.formula.value?.printDetails && cart.items.value.length > 0"
+                class="border-t border-default px-5 py-4"
+              >
+                <div class="flex items-center gap-1.5 mb-3">
+                  <UIcon name="i-lucide-printer" class="size-3.5 text-muted" />
+                  <p class="text-xs font-medium">
+                    Photo à imprimer
+                    <span class="text-muted font-normal ml-1">({{ cart.formula.value.printDetails }})</span>
+                  </p>
+                </div>
+                <p v-if="!cart.printPhotoId.value" class="text-xs text-amber-600 dark:text-amber-400 mb-2">
+                  Sélectionnez la photo que vous souhaitez en impression physique.
+                </p>
+                <div class="flex flex-col gap-1.5">
+                  <button
+                    v-for="item in cart.items.value"
+                    :key="item.id"
+                    type="button"
+                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg border-2 text-left transition-colors text-sm"
+                    :class="cart.printPhotoId.value === item.id
+                      ? 'border-primary bg-primary/5'
+                      : 'border-default hover:border-muted'"
+                    @click="cart.setPrintPhoto(cart.printPhotoId.value === item.id ? null : item.id)"
+                  >
+                    <img :src="item.url" :alt="item.filename" class="size-8 rounded object-cover shrink-0 bg-muted/10">
+                    <span class="flex-1 truncate text-xs">{{ item.filename }}</span>
+                    <div
+                      v-if="cart.printPhotoId.value === item.id"
+                      class="size-5 rounded-full bg-primary flex items-center justify-center shrink-0"
+                    >
+                      <UIcon name="i-lucide-printer" class="size-2.5 text-white" />
+                    </div>
+                  </button>
+                </div>
+              </div>
+
               <div
                 v-if="cart.count.value > 0"
                 class="p-4 border-t border-default space-y-2"
@@ -301,10 +340,17 @@ async function submitOrder() {
                   color="neutral"
                   size="md"
                   trailing-icon="i-lucide-arrow-right"
+                  :disabled="!!(cart.formula.value?.printDetails && cart.items.value.length > 0 && !cart.printPhotoId.value)"
                   @click="view = 'checkout'"
                 >
                   Commander — {{ (cart.totalCents.value / 100).toFixed(2) }} €
                 </UButton>
+                <p
+                  v-if="cart.formula.value?.printDetails && cart.items.value.length > 0 && !cart.printPhotoId.value"
+                  class="text-center text-xs text-amber-600 dark:text-amber-400"
+                >
+                  Choisissez la photo à imprimer pour continuer
+                </p>
               </div>
             </template>
 

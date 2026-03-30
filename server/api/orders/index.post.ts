@@ -16,7 +16,9 @@ const bodySchema = z.object({
   formulaId: z.string().uuid().optional(),
   promoCode: z.string().max(50).optional(),
   paymentMethod: z.enum(['link', 'terminal', 'cash']),
-  terminalId: z.string().optional()
+  terminalId: z.string().optional(),
+  printPhotoId: z.string().uuid().optional(),
+  printPhotoFilename: z.string().max(255).optional()
 }).refine(d => d.paymentMethod !== 'terminal' || !!d.terminalId, {
   message: 'terminalId requis pour le paiement par terminal',
   path: ['terminalId']
@@ -115,7 +117,9 @@ export default defineEventHandler(async (event) => {
     discountCents,
     cashPayment: body.paymentMethod === 'cash',
     createdByAdmin: true,
-    status: 'pending'
+    status: 'pending',
+    printPhotoId: body.printPhotoId ?? null,
+    printPhotoFilename: body.printPhotoFilename ?? null
   }).returning()
 
   if (!order) {

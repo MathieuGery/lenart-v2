@@ -52,5 +52,26 @@ export default defineEventHandler(async (event) => {
     }))
   )
 
-  return { ...order, photos: orderPhotos }
+  // Build printPhoto
+  let printPhoto = null
+  if (order.printPhotoId) {
+    const [printPhotoRecord] = await db.select().from(photos).where(eq(photos.id, order.printPhotoId)).limit(1)
+    if (printPhotoRecord) {
+      printPhoto = {
+        id: printPhotoRecord.id,
+        filename: printPhotoRecord.filename,
+        linked: true,
+        url: await blobPresignedUrl(printPhotoRecord.key)
+      }
+    }
+  } else if (order.printPhotoFilename) {
+    printPhoto = {
+      id: null,
+      filename: order.printPhotoFilename,
+      linked: false,
+      url: null
+    }
+  }
+
+  return { ...order, photos: orderPhotos, printPhoto }
 })

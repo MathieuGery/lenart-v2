@@ -15,7 +15,8 @@ const bodySchema = z.object({
   address: z.string().max(500).optional(),
   city: z.string().max(255).optional(),
   postalCode: z.string().max(20).optional(),
-  country: z.string().max(255).optional()
+  country: z.string().max(255).optional(),
+  printPhotoId: z.string().uuid().optional()
 })
 
 export default defineEventHandler(async (event) => {
@@ -100,6 +101,11 @@ export default defineEventHandler(async (event) => {
   // Free order (100% promo) — mark as paid immediately, no payment needed
   const isFreeOrder = totalCents === 0
 
+  // Validate printPhotoId belongs to this order's photos
+  const printPhotoId = body.printPhotoId && body.photoIds.includes(body.printPhotoId)
+    ? body.printPhotoId
+    : null
+
   const result = await db.insert(orders).values({
     email: body.email,
     firstName: body.firstName,
@@ -114,7 +120,8 @@ export default defineEventHandler(async (event) => {
     formulaName,
     cashPayment: body.paymentMethod === 'cash',
     createdByAdmin: false,
-    status: isFreeOrder ? 'paid' : 'pending'
+    status: isFreeOrder ? 'paid' : 'pending',
+    printPhotoId
   }).returning()
 
   const order = result[0]
