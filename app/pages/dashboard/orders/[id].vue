@@ -378,6 +378,39 @@ async function saveEdit() {
     saving.value = false
   }
 }
+
+// Comments
+const { data: comments, refresh: refreshComments } = await useFetch<OrderComment[]>(`/api/orders/${id}/comments`)
+const commentInput = ref('')
+const submittingComment = ref(false)
+const deletingCommentId = ref<string | null>(null)
+
+async function addComment() {
+  const content = commentInput.value.trim()
+  if (!content) return
+  submittingComment.value = true
+  try {
+    await $fetch(`/api/orders/${id}/comments`, { method: 'POST', body: { content } })
+    commentInput.value = ''
+    await refreshComments()
+  } catch {
+    toast.add({ title: 'Erreur lors de l\'ajout du commentaire', color: 'error' })
+  } finally {
+    submittingComment.value = false
+  }
+}
+
+async function deleteComment(commentId: string) {
+  deletingCommentId.value = commentId
+  try {
+    await $fetch(`/api/orders/${id}/comments/${commentId}`, { method: 'DELETE' })
+    await refreshComments()
+  } catch {
+    toast.add({ title: 'Erreur lors de la suppression', color: 'error' })
+  } finally {
+    deletingCommentId.value = null
+  }
+}
 </script>
 
 <template>
@@ -841,6 +874,68 @@ async function saveEdit() {
           <!-- Mollie ID -->
           <div v-if="order.molliePaymentId" class="text-xs text-muted">
             Mollie ID : <span class="font-mono">{{ order.molliePaymentId }}</span>
+          </div>
+
+          <!-- Comments -->
+          <div class="border border-default rounded-lg p-5 space-y-4">
+            <h2 class="text-sm font-medium">
+              Commentaires internes
+            </h2>
+
+            <!-- List -->
+            <div v-if="comments?.length" class="space-y-3">
+              <div
+                v-for="c in comments"
+                :key="c.id"
+                class="group flex items-start gap-3"
+              >
+                <div class="flex-1 rounded-lg bg-elevated/50 border border-default px-3 py-2.5">
+                  <p class="text-sm whitespace-pre-wrap">
+                    {{ c.content }}
+                  </p>
+                  <p class="text-[10px] text-muted mt-1.5">
+                    {{ new Date(c.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  class="mt-1 text-muted hover:text-error transition-colors opacity-0 group-hover:opacity-100 shrink-0"
+                  :disabled="deletingCommentId === c.id"
+                  @click="deleteComment(c.id)"
+                >
+                  <UIcon
+                    :name="deletingCommentId === c.id ? 'i-lucide-loader-circle' : 'i-lucide-trash-2'"
+                    class="size-3.5"
+                    :class="{ 'animate-spin': deletingCommentId === c.id }"
+                  />
+                </button>
+              </div>
+            </div>
+            <p v-else class="text-xs text-muted">
+              Aucun commentaire pour le moment.
+            </p>
+
+            <!-- Input -->
+            <form class="flex gap-2" @submit.prevent="addComment">
+              <UTextarea
+                v-model="commentInput"
+                placeholder="Ajouter un commentaire…"
+                size="sm"
+                color="neutral"
+                :rows="2"
+                autoresize
+                class="flex-1"
+              />
+              <UButton
+                type="submit"
+                icon="i-lucide-send"
+                color="neutral"
+                size="sm"
+                :loading="submittingComment"
+                :disabled="!commentInput.trim()"
+                square
+              />
+            </form>
           </div>
         </template>
 

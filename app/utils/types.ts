@@ -168,6 +168,13 @@ export interface PublicGalleryItem {
   date: string | null
 }
 
+export interface OrderComment {
+  id: string
+  orderId: string
+  content: string
+  createdAt: string
+}
+
 export interface PricingFormula {
   id: string
   name: string

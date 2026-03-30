@@ -197,6 +197,13 @@
       "when": 1774307080485,
       "tag": "0027_wooden_warstar",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1774865813183,
+      "tag": "0028_right_inhumans",
+      "breakpoints": true
     }
   ]
 }

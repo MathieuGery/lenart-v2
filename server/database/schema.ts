@@ -126,6 +126,15 @@ export const galleries = pgTable('galleries', {
   index('galleries_code_idx').on(table.code)
 ])
 
+export const orderComments = pgTable('order_comments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orderId: uuid('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  content: text('content').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => [
+  index('order_comments_order_id_idx').on(table.orderId)
+])
+
 export const pricingFormulaFeatures = pgTable('pricing_formula_features', {
   id: uuid('id').defaultRandom().primaryKey(),
   formulaId: uuid('formula_id').notNull().references(() => pricingFormulas.id, { onDelete: 'cascade' }),
