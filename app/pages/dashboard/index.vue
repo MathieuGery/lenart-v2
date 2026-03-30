@@ -3,6 +3,41 @@ const { user } = useUserSession()
 
 const { data: stats, status } = await useFetch<DashboardStats>('/api/stats')
 
+interface MollieAmount {
+  currency: string
+  value: string
+}
+
+interface MollieBalance {
+  id: string
+  mode: string
+  status: string
+  currency: string
+  description: string
+  availableAmount: MollieAmount
+  pendingAmount: MollieAmount
+  transferFrequency: string | null
+  transferThreshold: MollieAmount | null
+  transferReference: string | null
+  transferDestination: { type?: string, bankAccount?: string, beneficiaryName?: string } | null
+}
+
+const { data: mollieBalance, status: mollieStatus } = useFetch<MollieBalance>('/api/mollie/balance')
+const mollieLoading = computed(() => mollieStatus.value === 'pending')
+
+const TRANSFER_FREQ_LABEL: Record<string, string> = {
+  'every-day': 'Chaque jour',
+  daily: 'Quotidien',
+  'every-monday': 'Chaque lundi',
+  'every-tuesday': 'Chaque mardi',
+  'every-wednesday': 'Chaque mercredi',
+  'every-thursday': 'Chaque jeudi',
+  'every-friday': 'Chaque vendredi',
+  monthly: 'Mensuel',
+  'revenue-day': 'Jour de revenu',
+  never: 'Jamais'
+}
+
 const loading = computed(() => status.value === 'pending')
 
 function formatCents(cents: number) {
@@ -50,6 +85,88 @@ const STATUS_COLOR: Record<string, 'warning' | 'success' | 'error' | 'neutral'> 
           <p class="text-sm text-muted mt-0.5">
             Voici un aperçu de l'activité Len-Art.
           </p>
+        </div>
+
+        <!-- Mollie balance -->
+        <div class="border border-default rounded-lg overflow-hidden">
+          <div class="flex items-center justify-between px-5 py-3 border-b border-default">
+            <div class="flex items-center gap-2">
+              <UIcon name="i-lucide-landmark" class="size-4 text-muted" />
+              <h2 class="text-sm font-medium">Solde Mollie</h2>
+            </div>
+            <div v-if="mollieBalance" class="flex items-center gap-1.5">
+              <div class="size-1.5 rounded-full" :class="mollieBalance.status === 'active' ? 'bg-green-500' : 'bg-muted'" />
+              <span class="text-[10px] font-mono uppercase" :class="mollieBalance.mode === 'test' ? 'text-amber-500' : 'text-muted'">
+                {{ mollieBalance.mode }}
+              </span>
+            </div>
+          </div>
+
+          <div v-if="mollieLoading" class="px-5 py-4 grid grid-cols-2 lg:grid-cols-4 gap-6">
+            <div v-for="i in 4" :key="i" class="space-y-2">
+              <div class="h-3 w-16 bg-muted/20 rounded animate-pulse" />
+              <div class="h-7 w-24 bg-muted/20 rounded animate-pulse" />
+            </div>
+          </div>
+
+          <div v-else-if="mollieBalance" class="px-5 py-4 grid grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Total -->
+            <div>
+              <p class="text-[10px] uppercase tracking-wider text-muted mb-0.5">Total Mollie</p>
+              <p class="text-2xl font-semibold tabular-nums">
+                {{ (Number(mollieBalance.availableAmount.value) + Number(mollieBalance.pendingAmount.value)).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                <span class="text-sm font-normal text-muted">{{ mollieBalance.availableAmount.currency }}</span>
+              </p>
+              <p class="text-xs text-muted mt-0.5">Disponible + en attente</p>
+            </div>
+
+            <!-- Disponible -->
+            <div>
+              <p class="text-[10px] uppercase tracking-wider text-muted mb-0.5">Disponible</p>
+              <p class="text-2xl font-light tabular-nums">
+                {{ Number(mollieBalance.availableAmount.value).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                <span class="text-sm text-muted">{{ mollieBalance.availableAmount.currency }}</span>
+              </p>
+              <p class="text-xs text-muted mt-0.5">Prêt à être viré</p>
+            </div>
+
+            <!-- En attente -->
+            <div>
+              <p class="text-[10px] uppercase tracking-wider text-muted mb-0.5">En attente</p>
+              <p class="text-2xl font-light tabular-nums">
+                {{ Number(mollieBalance.pendingAmount.value).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                <span class="text-sm text-muted">{{ mollieBalance.pendingAmount.currency }}</span>
+              </p>
+              <p class="text-xs text-muted mt-0.5">Pas encore disponible</p>
+            </div>
+
+            <!-- Virement -->
+            <div class="space-y-1.5 text-xs">
+              <p class="text-[10px] uppercase tracking-wider text-muted mb-0.5">Virement</p>
+              <div v-if="mollieBalance.transferFrequency" class="flex items-center justify-between gap-2">
+                <span class="text-muted">Fréquence</span>
+                <span class="font-medium">{{ TRANSFER_FREQ_LABEL[mollieBalance.transferFrequency] ?? mollieBalance.transferFrequency }}</span>
+              </div>
+              <div v-if="mollieBalance.transferThreshold" class="flex items-center justify-between gap-2">
+                <span class="text-muted">Seuil</span>
+                <span class="font-medium">
+                  {{ Number(mollieBalance.transferThreshold.value).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) }} {{ mollieBalance.transferThreshold.currency }}
+                </span>
+              </div>
+              <div v-if="mollieBalance.transferDestination?.beneficiaryName" class="flex items-center justify-between gap-2">
+                <span class="text-muted shrink-0">Bénéficiaire</span>
+                <span class="font-medium truncate text-right">{{ mollieBalance.transferDestination.beneficiaryName }}</span>
+              </div>
+              <div v-if="mollieBalance.transferDestination?.bankAccount" class="flex items-center justify-between gap-2">
+                <span class="text-muted shrink-0">IBAN</span>
+                <span class="font-mono truncate text-right">{{ mollieBalance.transferDestination.bankAccount }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div v-else class="px-5 py-4 text-xs text-muted">
+            Impossible de charger le solde Mollie.
+          </div>
         </div>
 
         <!-- KPI cards -->
