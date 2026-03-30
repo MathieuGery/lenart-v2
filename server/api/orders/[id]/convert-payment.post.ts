@@ -17,8 +17,12 @@ export default defineEventHandler(async (event) => {
 
   const [order] = await db.select().from(orders).where(eq(orders.id, id)).limit(1)
   if (!order) throw createError({ statusCode: 404, message: 'Commande introuvable' })
-  if (!order.cashPayment) throw createError({ statusCode: 400, message: 'Cette commande n\'est pas en espèces' })
-  if (order.status !== 'pending') throw createError({ statusCode: 400, message: 'La commande doit être en attente pour être convertie' })
+
+  const isCashConversion = order.cashPayment && order.status === 'pending'
+  const isFailedRetry = !order.cashPayment && order.status === 'failed'
+  if (!isCashConversion && !isFailedRetry) {
+    throw createError({ statusCode: 400, message: 'Cette commande ne peut pas être relancée' })
+  }
 
   const appUrl = process.env.NUXT_APP_URL ?? 'https://v2.len-art.fr'
   const mollie = getMollie()
@@ -55,6 +59,7 @@ export default defineEventHandler(async (event) => {
   await db.update(orders).set({
     cashPayment: false,
     molliePaymentId: payment.id,
+    status: 'pending',
     updatedAt: new Date()
   }).where(eq(orders.id, id))
 

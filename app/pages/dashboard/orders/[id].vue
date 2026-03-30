@@ -568,16 +568,18 @@ async function deleteComment(commentId: string) {
             </div>
           </div>
 
-          <!-- Convert payment (cash + pending only) -->
+          <!-- Convert / retry payment -->
           <div
-            v-if="(order.cashPayment && order.status === 'pending') || convertUrl"
+            v-if="(order.cashPayment && order.status === 'pending') || order.status === 'failed' || convertUrl"
             class="border border-default rounded-lg p-5"
           >
             <h2 class="text-sm font-medium mb-1">
-              Convertir le paiement
+              {{ order.status === 'failed' ? 'Relancer le paiement' : 'Convertir le paiement' }}
             </h2>
             <p class="text-xs text-muted mb-4">
-              Passez cette commande espèces en paiement en ligne ou via TPE Mollie.
+              {{ order.status === 'failed'
+                ? 'Le paiement a échoué. Générez un nouveau lien ou envoyez directement au TPE.'
+                : 'Passez cette commande espèces en paiement en ligne ou via TPE Mollie.' }}
             </p>
 
             <!-- Idle: choose method -->
