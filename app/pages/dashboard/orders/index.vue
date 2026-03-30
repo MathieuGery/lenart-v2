@@ -333,6 +333,17 @@ const BUSINESS_STATUS_COLOR: Record<string, 'warning' | 'success'> = {
 // Search
 const search = ref('')
 
+// Date filter
+type DateRange = 'today' | 'week' | 'month' | 'all'
+const dateRange = ref<DateRange>('month')
+
+const DATE_RANGE_LABEL: Record<DateRange, string> = {
+  today: 'Aujourd\'hui',
+  week: 'Cette semaine',
+  month: 'Ce mois',
+  all: 'Tout'
+}
+
 // Sort
 type SortKey = 'createdAt' | 'firstName' | 'totalCents' | 'photoCount' | 'status' | 'businessStatus' | 'cashPayment'
 const sortKey = ref<SortKey>('createdAt')
@@ -352,7 +363,22 @@ const filteredOrders = computed(() => {
 
   let rows = [...orders.value]
 
-  // Filter
+  // Date filter
+  if (dateRange.value !== 'all') {
+    const now = new Date()
+    let from: Date
+    if (dateRange.value === 'today') {
+      from = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    } else if (dateRange.value === 'week') {
+      const day = now.getDay() === 0 ? 6 : now.getDay() - 1 // lundi = 0
+      from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day)
+    } else {
+      from = new Date(now.getFullYear(), now.getMonth(), 1)
+    }
+    rows = rows.filter(o => new Date(o.createdAt) >= from)
+  }
+
+  // Text filter
   const q = search.value.trim().toLowerCase()
   if (q) {
     rows = rows.filter(o =>
@@ -445,22 +471,39 @@ const filteredOrders = computed(() => {
       </div>
 
       <div v-else class="p-6 space-y-4">
-        <!-- Search bar -->
-        <UInput
-          v-model="search"
-          icon="i-lucide-search"
-          placeholder="Rechercher par nom, e-mail, statut…"
-          size="sm"
-          color="neutral"
-          class="w-full sm:max-w-sm"
-          :trailing="search ? true : false"
-        >
-          <template v-if="search" #trailing>
-            <button type="button" class="text-muted hover:text-highlighted" @click="search = ''">
-              <UIcon name="i-lucide-x" class="size-3.5" />
+        <!-- Filters -->
+        <div class="flex flex-wrap items-center gap-2">
+          <UInput
+            v-model="search"
+            icon="i-lucide-search"
+            placeholder="Rechercher par nom, e-mail, statut…"
+            size="sm"
+            color="neutral"
+            class="w-full sm:max-w-sm"
+            :trailing="search ? true : false"
+          >
+            <template v-if="search" #trailing>
+              <button type="button" class="text-muted hover:text-highlighted" @click="search = ''">
+                <UIcon name="i-lucide-x" class="size-3.5" />
+              </button>
+            </template>
+          </UInput>
+
+          <div class="flex items-center gap-1 rounded-lg border border-default p-0.5">
+            <button
+              v-for="(label, key) in DATE_RANGE_LABEL"
+              :key="key"
+              type="button"
+              class="px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
+              :class="dateRange === key
+                ? 'bg-elevated text-highlighted shadow-sm'
+                : 'text-muted hover:text-highlighted'"
+              @click="dateRange = key"
+            >
+              {{ label }}
             </button>
-          </template>
-        </UInput>
+          </div>
+        </div>
 
         <div class="border border-default rounded-lg overflow-hidden">
           <table class="w-full text-sm">
