@@ -46,6 +46,22 @@ async function deleteCollection(id: string) {
     toast.add({ title: err?.data?.message || 'Erreur lors de la suppression', color: 'error' })
   }
 }
+
+const groupedCollections = computed(() => {
+  if (!collections.value) return []
+  const groups: Record<string, CollectionListItem[]> = {}
+  for (const c of collections.value) {
+    const key = new Date(c.createdAt).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })
+    if (!groups[key]) groups[key] = []
+    groups[key].push(c)
+  }
+  // Sort groups: most recent date first
+  return Object.entries(groups).sort((a, b) => {
+    const dateA = new Date(a[1][0].createdAt).getTime()
+    const dateB = new Date(b[1][0].createdAt).getTime()
+    return dateB - dateA
+  })
+})
 </script>
 
 <template>
@@ -84,56 +100,61 @@ async function deleteCollection(id: string) {
         </UButton>
       </div>
 
-      <div v-else class="p-6">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div
-            v-for="collection in collections"
-            :key="collection.id"
-            class="border border-default rounded-lg p-4 hover:bg-elevated/50 transition-colors"
-            :class="{ 'opacity-50': !collection.visible }"
-          >
-            <NuxtLink
-              :to="`/dashboard/collections/${collection.id}`"
-              class="block"
+      <div v-else class="p-6 space-y-8">
+        <div
+          v-for="[date, group] in groupedCollections"
+          :key="date"
+        >
+          <h2 class="text-xs font-medium text-muted uppercase tracking-wider mb-3">
+            {{ date }}
+          </h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div
+              v-for="collection in group"
+              :key="collection.id"
+              class="border border-default rounded-lg p-4 hover:bg-elevated/50 transition-colors"
+              :class="{ 'opacity-50': !collection.visible }"
             >
-              <div class="flex items-center gap-2">
-                <h3 class="font-medium text-sm">
-                  {{ collection.name }}
-                </h3>
-                <UBadge v-if="!collection.visible" color="neutral" variant="subtle" size="xs">
-                  Masquée
-                </UBadge>
-              </div>
-              <p
-                v-if="collection.description"
-                class="text-xs text-muted mt-1 line-clamp-2"
+              <NuxtLink
+                :to="`/dashboard/collections/${collection.id}`"
+                class="block"
               >
-                {{ collection.description }}
-              </p>
-              <div class="flex items-center justify-between mt-3">
-                <span class="text-xs text-muted">
-                  {{ collection.photoCount }} photo{{ collection.photoCount !== 1 ? 's' : '' }}
-                </span>
-                <span class="text-xs text-muted">
-                  {{ new Date(collection.createdAt).toLocaleDateString('fr-FR') }}
-                </span>
+                <div class="flex items-center gap-2">
+                  <h3 class="font-medium text-sm">
+                    {{ collection.name }}
+                  </h3>
+                  <UBadge v-if="!collection.visible" color="neutral" variant="subtle" size="xs">
+                    Masquée
+                  </UBadge>
+                </div>
+                <p
+                  v-if="collection.description"
+                  class="text-xs text-muted mt-1 line-clamp-2"
+                >
+                  {{ collection.description }}
+                </p>
+                <div class="mt-3">
+                  <span class="text-xs text-muted">
+                    {{ collection.photoCount }} photo{{ collection.photoCount !== 1 ? 's' : '' }}
+                  </span>
+                </div>
+              </NuxtLink>
+              <div class="mt-3 pt-3 border-t border-default flex justify-between">
+                <UButton
+                  :icon="collection.visible ? 'i-lucide-eye' : 'i-lucide-eye-off'"
+                  :color="collection.visible ? 'neutral' : 'warning'"
+                  variant="ghost"
+                  size="xs"
+                  @click="toggleVisibility(collection)"
+                />
+                <UButton
+                  icon="i-lucide-trash-2"
+                  color="error"
+                  variant="ghost"
+                  size="xs"
+                  @click="deleteCollection(collection.id)"
+                />
               </div>
-            </NuxtLink>
-            <div class="mt-3 pt-3 border-t border-default flex justify-between">
-              <UButton
-                :icon="collection.visible ? 'i-lucide-eye' : 'i-lucide-eye-off'"
-                :color="collection.visible ? 'neutral' : 'warning'"
-                variant="ghost"
-                size="xs"
-                @click="toggleVisibility(collection)"
-              />
-              <UButton
-                icon="i-lucide-trash-2"
-                color="error"
-                variant="ghost"
-                size="xs"
-                @click="deleteCollection(collection.id)"
-              />
             </div>
           </div>
         </div>
