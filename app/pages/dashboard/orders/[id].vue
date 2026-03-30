@@ -517,6 +517,14 @@ async function deleteComment(commentId: string) {
             </div>
             <div>
               <p class="text-xs text-muted mb-1">
+                Origine
+              </p>
+              <p class="text-sm font-medium">
+                {{ order.createdByAdmin === true ? 'Stand' : order.createdByAdmin === false ? 'Client' : '—' }}
+              </p>
+            </div>
+            <div>
+              <p class="text-xs text-muted mb-1">
                 Date
               </p>
               <p class="text-sm">

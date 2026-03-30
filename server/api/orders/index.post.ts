@@ -114,6 +114,7 @@ export default defineEventHandler(async (event) => {
     promoCode: appliedPromoCode,
     discountCents,
     cashPayment: body.paymentMethod === 'cash',
+    createdByAdmin: true,
     status: 'pending'
   }).returning()
 

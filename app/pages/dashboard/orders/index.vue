@@ -670,6 +670,14 @@ const filteredOrders = computed(() => {
                       class="size-3.5 text-muted"
                     />
                     <span>{{ order.cashPayment ? 'Espèces' : 'En ligne' }}</span>
+                    <UBadge
+                      v-if="order.createdByAdmin !== null"
+                      :color="order.createdByAdmin ? 'neutral' : 'info'"
+                      variant="subtle"
+                      size="xs"
+                    >
+                      {{ order.createdByAdmin ? 'Stand' : 'Client' }}
+                    </UBadge>
                   </div>
                 </td>
                 <td class="px-4 py-3 hidden lg:table-cell text-xs text-muted">

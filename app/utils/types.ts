@@ -117,6 +117,7 @@ export interface OrderDetail {
   businessStatus: string
   photosEmailSentAt: string | null
   cashPayment: boolean
+  createdByAdmin: boolean | null
   totalCents: number
   formulaName: string | null
   molliePaymentId: string | null
@@ -133,6 +134,7 @@ export interface OrderListItem {
   status: string
   businessStatus: string
   cashPayment: boolean
+  createdByAdmin: boolean | null
   totalCents: number
   createdAt: string
   photoCount: number

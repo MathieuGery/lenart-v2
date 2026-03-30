@@ -113,6 +113,7 @@ export default defineEventHandler(async (event) => {
     totalCents,
     formulaName,
     cashPayment: body.paymentMethod === 'cash',
+    createdByAdmin: false,
     status: isFreeOrder ? 'paid' : 'pending'
   }).returning()
 

@@ -53,6 +53,7 @@ export const orders = pgTable('orders', {
   status: orderStatusEnum('status').notNull().default('pending'),
   businessStatus: businessStatusEnum('business_status').notNull().default('in_progress'),
   photosEmailSentAt: timestamp('photos_email_sent_at'),
+  createdByAdmin: boolean('created_by_admin'),
   totalCents: integer('total_cents').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull()
