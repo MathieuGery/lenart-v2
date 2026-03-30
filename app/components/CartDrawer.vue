@@ -409,7 +409,7 @@ async function submitOrder() {
                       :loading="loading"
                       :trailing-icon="finalTotalCents === 0 ? 'i-lucide-check' : form.paymentMethod === 'cash' ? 'i-lucide-check' : 'i-lucide-credit-card'"
                     >
-                      {{ finalTotalCents === 0 ? 'Confirmer la commande' : form.paymentMethod === 'cash' ? 'Confirmer la réservation' : `Payer ${(finalTotalCents / 100).toFixed(2)} € via Mollie` }}
+                      {{ finalTotalCents === 0 ? 'Confirmer la commande' : form.paymentMethod === 'cash' ? 'Confirmer la réservation' : `Payer ${(finalTotalCents / 100).toFixed(2)} € en CB` }}
                     </UButton>
                     <p v-if="finalTotalCents === 0" class="text-center text-xs text-muted/60 mt-2">
                       Offert grâce à votre code promo
