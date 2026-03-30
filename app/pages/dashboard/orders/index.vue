@@ -681,7 +681,7 @@ const filteredOrders = computed(() => {
                   </div>
                 </td>
                 <td class="px-4 py-3 hidden lg:table-cell text-xs text-muted">
-                  {{ new Date(order.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) }}
+                  {{ new Date(order.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
                 </td>
                 <td class="px-4 py-3">
                   <UButton

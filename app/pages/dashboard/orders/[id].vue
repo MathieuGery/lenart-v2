@@ -528,7 +528,7 @@ async function deleteComment(commentId: string) {
                 Date
               </p>
               <p class="text-sm">
-                {{ new Date(order.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) }}
+                {{ new Date(order.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
               </p>
             </div>
           </div>
