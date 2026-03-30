@@ -45,7 +45,7 @@ export interface ContactMessage {
 
 // Dashboard stats
 export interface DashboardStats {
-  revenue: { paidCents: number, cashPendingCents: number }
+  revenue: { paidCents: number, cashPaidCents: number, cashPendingCents: number }
   orders: { total: number, paid: number, pending: number, cashPending: number, cancelled: number, other: number }
   photos: { total: number, sold: number, unlinked: number }
   collections: number

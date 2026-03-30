@@ -75,6 +75,7 @@ export default defineEventHandler(async () => {
 
   // Aggregate revenue and order counts
   let revenuePaidCents = 0
+  let revenueCashPaidCents = 0
   let revenueCashPendingCents = 0
   let countPaid = 0
   let countPending = 0
@@ -88,7 +89,11 @@ export default defineEventHandler(async () => {
     const n = Number(row.orderCount ?? 0)
     totalOrders += n
 
-    if (row.status === 'paid') {
+    if (row.status === 'paid' && row.cashPayment) {
+      revenuePaidCents += cents
+      revenueCashPaidCents += cents
+      countPaid += n
+    } else if (row.status === 'paid') {
       revenuePaidCents += cents
       countPaid += n
     } else if (row.status === 'pending' && row.cashPayment) {
@@ -107,6 +112,7 @@ export default defineEventHandler(async () => {
   return {
     revenue: {
       paidCents: revenuePaidCents,
+      cashPaidCents: revenueCashPaidCents,
       cashPendingCents: revenueCashPendingCents
     },
     orders: {

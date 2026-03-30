@@ -53,7 +53,7 @@ const STATUS_COLOR: Record<string, 'warning' | 'success' | 'error' | 'neutral'> 
         </div>
 
         <!-- KPI cards -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <!-- Revenue paid -->
           <div class="border border-default rounded-lg p-4 space-y-1">
             <p class="text-xs text-muted">
@@ -65,6 +65,20 @@ const STATUS_COLOR: Record<string, 'warning' | 'success' | 'error' | 'neutral'> 
             </p>
             <p class="text-xs text-muted">
               Paiements confirmés
+            </p>
+          </div>
+
+          <!-- Cash paid -->
+          <div class="border border-default rounded-lg p-4 space-y-1">
+            <p class="text-xs text-muted">
+              Encaissé en liquide
+            </p>
+            <div v-if="loading" class="h-7 w-24 bg-muted/20 rounded animate-pulse" />
+            <p v-else class="text-2xl font-light tabular-nums">
+              {{ formatCents(stats?.revenue.cashPaidCents ?? 0) }} €
+            </p>
+            <p class="text-xs text-muted">
+              Paiements cash confirmés
             </p>
           </div>
 
