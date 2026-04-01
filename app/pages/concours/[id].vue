@@ -391,66 +391,79 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
             </div>
           </Transition>
 
-          <!-- Photos grid -->
-          <div
-            v-if="collection.photos.length"
-            ref="containerRef"
-            class="mt-8 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"
-          >
+          <!-- Photos grid (visible only after formula selection) -->
+          <template v-if="cart.formula.value">
             <div
-              v-for="(photo, index) in collection.photos"
-              :key="photo.id"
-              class="relative aspect-4/3 overflow-hidden bg-muted/10 rounded group cursor-zoom-in"
-              @click="openLightbox(index)"
+              v-if="collection.photos.length"
+              ref="containerRef"
+              class="mt-8 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"
             >
-              <!-- Image -->
-              <img
-                class="lazy-img size-full object-cover transition-all duration-300 group-hover:scale-[1.03] group-hover:brightness-90"
-                :data-src="photo.url"
-                :alt="photo.filename"
-                style="opacity: 0"
-                @load="($event.target as HTMLImageElement).style.opacity = '1'"
-              >
-
-              <!-- Tour complet overlay -->
               <div
-                v-if="cart.formula.value?.isTourComplete"
-                class="absolute inset-0 bg-primary/20 ring-2 ring-inset ring-primary rounded pointer-events-none flex items-center justify-center"
+                v-for="(photo, index) in collection.photos"
+                :key="photo.id"
+                class="relative aspect-4/3 overflow-hidden bg-muted/10 rounded group cursor-zoom-in"
+                @click="openLightbox(index)"
               >
-                <UIcon name="i-lucide-check" class="size-5 text-white drop-shadow" />
-              </div>
-
-              <!-- Selected ring (hors tour complet) -->
-              <div
-                v-else-if="cart.isInCart(photo.id)"
-                class="absolute inset-0 ring-2 ring-inset ring-primary rounded pointer-events-none"
-              />
-
-              <!-- Cart button (masqué si tour complet) -->
-              <div v-if="!cart.formula.value?.isTourComplete" class="absolute bottom-2 right-2">
-                <button
-                  type="button"
-                  class="size-7 rounded-full flex items-center justify-center text-white transition-colors"
-                  :class="cart.isInCart(photo.id)
-                    ? 'bg-primary'
-                    : 'bg-black/40 active:bg-black/60'"
-                  :title="cart.isInCart(photo.id) ? 'Retirer du panier' : 'Ajouter au panier'"
-                  @click.stop="handleCartToggle(photo)"
+                <!-- Image -->
+                <img
+                  class="lazy-img size-full object-cover transition-all duration-300 group-hover:scale-[1.03] group-hover:brightness-90"
+                  :data-src="photo.url"
+                  :alt="photo.filename"
+                  style="opacity: 0"
+                  @load="($event.target as HTMLImageElement).style.opacity = '1'"
                 >
-                  <UIcon
-                    :name="cart.isInCart(photo.id) ? 'i-lucide-check' : 'i-lucide-shopping-cart'"
-                    class="size-3.5"
-                  />
-                </button>
+
+                <!-- Tour complet overlay -->
+                <div
+                  v-if="cart.formula.value?.isTourComplete"
+                  class="absolute inset-0 bg-primary/20 ring-2 ring-inset ring-primary rounded pointer-events-none flex items-center justify-center"
+                >
+                  <UIcon name="i-lucide-check" class="size-5 text-white drop-shadow" />
+                </div>
+
+                <!-- Selected ring (hors tour complet) -->
+                <div
+                  v-else-if="cart.isInCart(photo.id)"
+                  class="absolute inset-0 ring-2 ring-inset ring-primary rounded pointer-events-none"
+                />
+
+                <!-- Cart button (masqué si tour complet) -->
+                <div v-if="!cart.formula.value?.isTourComplete" class="absolute bottom-2 right-2">
+                  <button
+                    type="button"
+                    class="size-7 rounded-full flex items-center justify-center text-white transition-colors"
+                    :class="cart.isInCart(photo.id)
+                      ? 'bg-primary'
+                      : 'bg-black/40 active:bg-black/60'"
+                    :title="cart.isInCart(photo.id) ? 'Retirer du panier' : 'Ajouter au panier'"
+                    @click.stop="handleCartToggle(photo)"
+                  >
+                    <UIcon
+                      :name="cart.isInCart(photo.id) ? 'i-lucide-check' : 'i-lucide-shopping-cart'"
+                      class="size-3.5"
+                    />
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- Empty -->
-          <div v-else class="mt-20 text-center">
-            <UIcon name="i-lucide-image-off" class="size-10 text-muted/40 mx-auto" />
-            <p class="mt-4 text-sm text-muted">
-              Aucune photo dans ce concours.
+            <!-- Empty -->
+            <div v-else class="mt-20 text-center">
+              <UIcon name="i-lucide-image-off" class="size-10 text-muted/40 mx-auto" />
+              <p class="mt-4 text-sm text-muted">
+                Aucune photo dans ce concours.
+              </p>
+            </div>
+          </template>
+
+          <!-- No formula selected -->
+          <div v-else-if="collection.photos.length" class="mt-12 text-center">
+            <UIcon name="i-lucide-image" class="size-10 text-muted/40 mx-auto" />
+            <p class="mt-4 text-sm font-medium">
+              {{ collection.photos.length }} photo{{ collection.photos.length > 1 ? 's' : '' }} disponible{{ collection.photos.length > 1 ? 's' : '' }}
+            </p>
+            <p class="mt-1 text-sm text-muted">
+              Choisissez une formule ci-dessus pour voir les photos.
             </p>
           </div>
         </template>
