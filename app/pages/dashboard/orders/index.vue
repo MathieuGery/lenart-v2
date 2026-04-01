@@ -372,7 +372,7 @@ const search = ref('')
 
 // Date filter
 type DateRange = 'today' | 'week' | 'month' | 'all'
-const dateRange = ref<DateRange>('month')
+const dateRange = ref<DateRange>('all')
 
 const DATE_RANGE_LABEL: Record<DateRange, string> = {
   today: 'Aujourd\'hui',
@@ -713,7 +713,8 @@ const filteredOrders = computed(() => {
                       variant="subtle"
                       size="xs"
                     >
-                      {{ order.createdByAdmin ? 'Stand' : 'Client' }}
+                      <UIcon :name="order.createdByAdmin ? 'i-lucide-store' : 'i-lucide-globe'" class="size-3" />
+                      {{ order.createdByAdmin ? 'Stand' : 'Site' }}
                     </UBadge>
                   </div>
                 </td>
@@ -756,7 +757,6 @@ const filteredOrders = computed(() => {
   <UModal v-model:open="modalOpen" :ui="{ content: 'max-w-xl' }">
     <template #content>
       <div class="p-6">
-
         <!-- Header + steps -->
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-base font-medium">
@@ -776,14 +776,31 @@ const filteredOrders = computed(() => {
           <div class="space-y-4">
             <div class="grid grid-cols-2 gap-3">
               <UFormField label="Prénom">
-                <UInput v-model="form.firstName" placeholder="Marie" color="neutral" class="w-full" />
+                <UInput
+                  v-model="form.firstName"
+                  placeholder="Marie"
+                  color="neutral"
+                  class="w-full"
+                />
               </UFormField>
               <UFormField label="Nom">
-                <UInput v-model="form.lastName" placeholder="Dupont" color="neutral" class="w-full" />
+                <UInput
+                  v-model="form.lastName"
+                  placeholder="Dupont"
+                  color="neutral"
+                  class="w-full"
+                />
               </UFormField>
             </div>
             <UFormField label="E-mail" :error="emailTouched && form.email && !emailValid ? 'Adresse e-mail invalide' : undefined">
-              <UInput v-model="form.email" type="email" placeholder="marie@example.com" :color="emailTouched && form.email && !emailValid ? 'error' : 'neutral'" class="w-full" @blur="emailTouched = true" />
+              <UInput
+                v-model="form.email"
+                type="email"
+                placeholder="marie@example.com"
+                :color="emailTouched && form.email && !emailValid ? 'error' : 'neutral'"
+                class="w-full"
+                @blur="emailTouched = true"
+              />
             </UFormField>
           </div>
         </template>
@@ -801,8 +818,12 @@ const filteredOrders = computed(() => {
                   :class="!form.formulaId ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
                   @click="form.formulaId = ''"
                 >
-                  <p class="font-medium">Sans formule</p>
-                  <p class="text-xs text-muted">Prix par photo</p>
+                  <p class="font-medium">
+                    Sans formule
+                  </p>
+                  <p class="text-xs text-muted">
+                    Prix par photo
+                  </p>
                 </button>
                 <button
                   v-for="f in formulas"
@@ -812,8 +833,12 @@ const filteredOrders = computed(() => {
                   :class="form.formulaId === f.id ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
                   @click="form.formulaId = f.id"
                 >
-                  <p class="font-medium">{{ f.name }}</p>
-                  <p class="text-xs text-muted">{{ (f.basePriceCents / 100).toFixed(2) }} € — {{ f.digitalPhotosCount }} photos</p>
+                  <p class="font-medium">
+                    {{ f.name }}
+                  </p>
+                  <p class="text-xs text-muted">
+                    {{ (f.basePriceCents / 100).toFixed(2) }} € — {{ f.digitalPhotosCount }} photos
+                  </p>
                 </button>
               </div>
             </div>
@@ -893,8 +918,12 @@ const filteredOrders = computed(() => {
                   >
                     <UIcon name="i-lucide-image" class="size-3.5 text-success shrink-0" />
                     <div class="min-w-0 flex-1">
-                      <p class="truncate">{{ result.filename }}</p>
-                      <p class="text-[10px] text-muted truncate">{{ result.collectionName }}</p>
+                      <p class="truncate">
+                        {{ result.filename }}
+                      </p>
+                      <p class="text-[10px] text-muted truncate">
+                        {{ result.collectionName }}
+                      </p>
                     </div>
                     <UIcon v-if="photoItems.some(p => p.photoId === result.id)" name="i-lucide-check" class="size-3.5 text-success shrink-0" />
                   </button>
@@ -993,12 +1022,22 @@ const filteredOrders = computed(() => {
             <div class="flex items-start gap-3 mb-5 p-4 rounded-lg bg-green-500/10 border border-green-500/20">
               <UIcon name="i-lucide-check-circle" class="size-5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
               <div>
-                <p class="text-sm font-medium">Commande créée</p>
-                <p class="text-xs text-muted mt-0.5">Partagez ce lien avec le client pour qu'il procède au paiement.</p>
+                <p class="text-sm font-medium">
+                  Commande créée
+                </p>
+                <p class="text-xs text-muted mt-0.5">
+                  Partagez ce lien avec le client pour qu'il procède au paiement.
+                </p>
               </div>
             </div>
             <div class="flex items-center gap-2">
-              <UInput :model-value="createdCheckoutUrl" readonly color="neutral" size="sm" class="flex-1 font-mono text-xs" />
+              <UInput
+                :model-value="createdCheckoutUrl"
+                readonly
+                color="neutral"
+                size="sm"
+                class="flex-1 font-mono text-xs"
+              />
               <UButton
                 icon="i-lucide-copy"
                 color="neutral"

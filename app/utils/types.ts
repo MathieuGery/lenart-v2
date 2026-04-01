@@ -194,3 +194,49 @@ export interface PricingFormula {
   isTourComplete: boolean
   printDetails: string | null
 }
+
+// Customers
+export interface CustomerListItem {
+  email: string
+  firstName: string
+  lastName: string
+  orderCount: number
+  paidOrderCount: number
+  totalSpentCents: number
+  lastOrderAt: string
+  firstOrderAt: string
+}
+
+export interface CustomerDetail {
+  email: string
+  firstName: string
+  lastName: string
+  address: string | null
+  city: string | null
+  postalCode: string | null
+  country: string | null
+  orderCount: number
+  paidOrderCount: number
+  totalSpentCents: number
+  totalPhotoCount: number
+  firstOrderAt: string
+  lastOrderAt: string
+  orders: {
+    id: string
+    firstName: string
+    lastName: string
+    email: string
+    status: string
+    businessStatus: string
+    cashPayment: boolean
+    createdByAdmin: boolean | null
+    totalCents: number
+    formulaName: string | null
+    address: string | null
+    city: string | null
+    postalCode: string | null
+    country: string | null
+    createdAt: string
+    photoCount: number
+  }[]
+}

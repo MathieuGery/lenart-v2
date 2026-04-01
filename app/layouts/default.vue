@@ -18,7 +18,16 @@ const links = [[{
   onSelect: () => {
     open.value = false
   }
-}, {
+},
+{
+  label: 'Défilement',
+  icon: 'i-lucide-arrow-left-right',
+  to: '/dashboard/orders/review',
+  onSelect: () => {
+    open.value = false
+  }
+},
+{
   label: 'Commandes',
   icon: 'i-lucide-shopping-bag',
   to: '/dashboard/orders',
@@ -27,9 +36,9 @@ const links = [[{
   }
 },
 {
-  label: 'Défilement',
-  icon: 'i-lucide-arrow-left-right',
-  to: '/dashboard/orders/review',
+  label: 'Clients',
+  icon: 'i-lucide-users',
+  to: '/dashboard/customers',
   onSelect: () => {
     open.value = false
   }
