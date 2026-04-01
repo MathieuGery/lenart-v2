@@ -89,7 +89,7 @@ const links = [
           </div>
           <div class="flex items-center gap-3">
             <p class="text-xs text-muted">
-              &copy; {{ new Date().getFullYear() }} Len-Art — Tous droits réservés
+              &copy; {{ new Date().getFullYear() }} Len-Art — Tous droits réservés - Made with ❤️ by <a href="https://mathieu.gery.me" target="_blank" rel="noopener noreferrer" class="text-muted hover:text-highlighted transition-colors">Mathieu Gery</a>
             </p>
             <NuxtLink to="/login" class="text-xs text-muted/50 hover:text-muted transition-colors">
               Admin

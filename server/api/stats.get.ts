@@ -1,4 +1,4 @@
-import { eq, count, sum, desc, and, isNull } from 'drizzle-orm'
+import { eq, count, sum, desc, and, isNull, sql } from 'drizzle-orm'
 import { orders, orderItems, photos, collections, contactMessages } from '~~/server/database/schema'
 import { db } from '~~/server/utils/db'
 
@@ -11,7 +11,8 @@ export default defineEventHandler(async () => {
     recentOrders,
     photosSold,
     unlinkedPhotos,
-    formulaStats
+    formulaStats,
+    originStats
   ] = await Promise.all([
     // Orders grouped by status + cash_payment
     db.select({
@@ -70,7 +71,14 @@ export default defineEventHandler(async () => {
       orderCount: count(orders.id)
     })
       .from(orders)
-      .groupBy(orders.formulaName)
+      .groupBy(orders.formulaName),
+
+    // Orders by origin (stand vs site)
+    db.select({
+      stand: sql<number>`count(*) filter (where ${orders.createdByAdmin} = true)`.mapWith(Number),
+      site: sql<number>`count(*) filter (where ${orders.createdByAdmin} is null or ${orders.createdByAdmin} = false)`.mapWith(Number)
+    })
+      .from(orders)
   ])
 
   // Aggregate revenue and order counts
@@ -136,6 +144,10 @@ export default defineEventHandler(async () => {
     formulas: formulaStats.map(r => ({
       name: r.formulaName ?? 'Sans formule',
       count: Number(r.orderCount)
-    }))
+    })),
+    origin: {
+      stand: originStats[0]?.stand ?? 0,
+      site: originStats[0]?.site ?? 0
+    }
   }
 })

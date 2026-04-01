@@ -64,6 +64,10 @@ export interface DashboardStats {
     name: string
     count: number
   }[]
+  origin: {
+    stand: number
+    site: number
+  }
 }
 
 // Terminals

@@ -406,6 +406,48 @@ const STATUS_COLOR: Record<string, 'warning' | 'success' | 'error' | 'neutral'> 
               </div>
             </div>
 
+            <!-- Origin breakdown (stand vs site) -->
+            <div class="border border-default rounded-lg overflow-hidden">
+              <div class="px-5 py-3 border-b border-default">
+                <h2 class="text-sm font-medium">
+                  Origine des commandes
+                </h2>
+              </div>
+              <div v-if="loading" class="px-5 py-3 space-y-3">
+                <div v-for="i in 2" :key="i" class="h-4 bg-muted/20 rounded animate-pulse" />
+              </div>
+              <div v-else class="px-5 py-3 space-y-3">
+                <div
+                  v-for="item in [
+                    { label: 'Stand', value: stats?.origin.stand ?? 0, color: 'bg-stone-500', icon: 'i-lucide-store' },
+                    { label: 'Site', value: stats?.origin.site ?? 0, color: 'bg-blue-500', icon: 'i-lucide-globe' },
+                  ]"
+                  :key="item.label"
+                  class="flex items-center gap-3"
+                >
+                  <div class="w-2 h-2 rounded-full shrink-0" :class="item.color" />
+                  <UIcon :name="item.icon" class="size-3.5 text-muted" />
+                  <span class="text-xs text-muted flex-1">{{ item.label }}</span>
+                  <span class="text-xs font-medium tabular-nums">{{ item.value }}</span>
+                </div>
+
+                <!-- Bar chart -->
+                <div
+                  v-if="(stats?.orders.total ?? 0) > 0"
+                  class="h-2 rounded-full overflow-hidden flex gap-px mt-1"
+                >
+                  <div
+                    class="bg-stone-500 transition-all"
+                    :style="{ width: `${((stats?.origin.stand ?? 0) / (stats?.orders.total ?? 1)) * 100}%` }"
+                  />
+                  <div
+                    class="bg-blue-500 transition-all"
+                    :style="{ width: `${((stats?.origin.site ?? 0) / (stats?.orders.total ?? 1)) * 100}%` }"
+                  />
+                </div>
+              </div>
+            </div>
+
             <!-- Formulas breakdown -->
             <div v-if="stats?.formulas?.length" class="border border-default rounded-lg overflow-hidden">
               <div class="px-5 py-3 border-b border-default">
