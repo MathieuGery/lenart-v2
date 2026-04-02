@@ -1,6 +1,12 @@
 <script setup lang="ts">
 const colorMode = useColorMode()
 const cart = useCart()
+const mobileMenuOpen = ref(false)
+const route = useRoute()
+
+watch(() => route.path, () => {
+  mobileMenuOpen.value = false
+})
 
 const links = [
   { label: 'Concours', to: '/concours' },
@@ -15,9 +21,21 @@ const links = [
     <header class="sticky top-0 z-50 backdrop-blur-md bg-[var(--ui-bg)]/80">
       <div class="max-w-6xl mx-auto px-6 lg:px-8">
         <div class="flex items-center justify-between h-14">
-          <NuxtLink to="/" class="text-lg tracking-tight font-medium">
-            Len-Art
-          </NuxtLink>
+          <div class="flex items-center gap-2">
+            <!-- Mobile menu button -->
+            <UButton
+              :icon="mobileMenuOpen ? 'i-lucide-x' : 'i-lucide-menu'"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              square
+              class="md:hidden"
+              @click="mobileMenuOpen = !mobileMenuOpen"
+            />
+            <NuxtLink to="/" class="text-lg tracking-tight font-medium">
+              Len-Art
+            </NuxtLink>
+          </div>
 
           <nav class="hidden md:flex items-center gap-8">
             <NuxtLink
@@ -64,6 +82,27 @@ const links = [
             </button>
           </div>
         </div>
+
+        <!-- Mobile nav -->
+        <Transition
+          enter-active-class="transition duration-200 ease-out"
+          enter-from-class="opacity-0 -translate-y-2"
+          enter-to-class="opacity-100 translate-y-0"
+          leave-active-class="transition duration-150 ease-in"
+          leave-from-class="opacity-100 translate-y-0"
+          leave-to-class="opacity-0 -translate-y-2"
+        >
+          <nav v-if="mobileMenuOpen" class="md:hidden pb-4 border-t border-default pt-3 flex flex-col gap-1">
+            <NuxtLink
+              v-for="link in links"
+              :key="link.to"
+              :to="link.to"
+              class="px-3 py-2 rounded-lg text-sm text-muted hover:text-highlighted hover:bg-elevated/50 transition-colors"
+            >
+              {{ link.label }}
+            </NuxtLink>
+          </nav>
+        </Transition>
       </div>
     </header>
 
