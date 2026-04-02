@@ -584,8 +584,8 @@ const filteredOrders = computed(() => {
           </div>
         </div>
 
-        <div class="border border-default rounded-lg overflow-hidden">
-          <table class="w-full text-sm">
+        <div class="border border-default rounded-lg overflow-x-auto">
+          <table class="w-full text-sm min-w-200">
             <thead>
               <tr class="border-b border-default bg-elevated/30">
                 <th class="text-left px-4 py-3 font-medium text-xs text-muted">
