@@ -20,6 +20,10 @@ watch(() => collection.value?.photos, () => {
   refreshLazy()
 })
 
+watch(() => cart.formula.value, () => {
+  nextTick(() => refreshLazy())
+})
+
 // Cart
 const cart = useCart()
 const toast = useToast()
