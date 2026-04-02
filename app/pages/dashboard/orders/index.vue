@@ -335,6 +335,48 @@ function copyToClipboard(text: string) {
 const emailValid = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
 const emailTouched = ref(false)
 
+// Email autocomplete from existing customers
+const emailSuggestions = ref<{ email: string, firstName: string, lastName: string }[]>([])
+const showEmailSuggestions = ref(false)
+const emailSearching = ref(false)
+const emailSearchDone = ref(false)
+let emailSearchTimeout: ReturnType<typeof setTimeout> | null = null
+
+watch(() => form.email, (val) => {
+  if (emailSearchTimeout) clearTimeout(emailSearchTimeout)
+  if (val.trim().length < 2) {
+    emailSuggestions.value = []
+    showEmailSuggestions.value = false
+    emailSearching.value = false
+    emailSearchDone.value = false
+    return
+  }
+  emailSearching.value = true
+  emailSearchDone.value = false
+  showEmailSuggestions.value = true
+  emailSearchTimeout = setTimeout(async () => {
+    try {
+      const results = await $fetch<{ email: string, firstName: string, lastName: string }[]>('/api/customers', {
+        params: { search: val.trim() }
+      })
+      emailSuggestions.value = results.slice(0, 5)
+    } catch {
+      emailSuggestions.value = []
+    } finally {
+      emailSearching.value = false
+      emailSearchDone.value = true
+      showEmailSuggestions.value = true
+    }
+  }, 300)
+})
+
+function selectEmailSuggestion(suggestion: { email: string, firstName: string, lastName: string }) {
+  form.email = suggestion.email
+  form.firstName = suggestion.firstName
+  form.lastName = suggestion.lastName
+  showEmailSuggestions.value = false
+}
+
 function canAdvance(s: typeof step.value) {
   if (s === 'info') return form.firstName && form.lastName && form.email && emailValid.value
   if (s === 'photos') return photoItems.value.length > 0
@@ -754,7 +796,7 @@ const filteredOrders = computed(() => {
   </UDashboardPanel>
 
   <!-- New order modal -->
-  <UModal v-model:open="modalOpen" :ui="{ content: 'max-w-xl' }">
+  <UModal v-model:open="modalOpen" :ui="{ content: 'max-w-xl overflow-visible' }">
     <template #content>
       <div class="p-6">
         <!-- Header + steps -->
@@ -793,14 +835,52 @@ const filteredOrders = computed(() => {
               </UFormField>
             </div>
             <UFormField label="E-mail" :error="emailTouched && form.email && !emailValid ? 'Adresse e-mail invalide' : undefined">
-              <UInput
-                v-model="form.email"
-                type="email"
-                placeholder="marie@example.com"
-                :color="emailTouched && form.email && !emailValid ? 'error' : 'neutral'"
-                class="w-full"
-                @blur="emailTouched = true"
-              />
+              <div class="relative">
+                <UInput
+                  v-model="form.email"
+                  type="email"
+                  placeholder="marie@example.com"
+                  :color="emailTouched && form.email && !emailValid ? 'error' : 'neutral'"
+                  class="w-full"
+                  autocomplete="off"
+                  @blur="() => { emailTouched = true; window.setTimeout(() => showEmailSuggestions = false, 150) }"
+                  @focus="showEmailSuggestions = emailSuggestions.length > 0 || emailSearching"
+                />
+                <div
+                  v-if="showEmailSuggestions"
+                  class="absolute z-50 mt-1 w-full rounded-lg border border-default bg-default shadow-lg max-h-48 overflow-y-auto"
+                >
+                  <!-- Loading -->
+                  <div v-if="emailSearching" class="px-3 py-3 flex items-center gap-2 text-sm text-muted">
+                    <UIcon name="i-lucide-loader-2" class="size-4 animate-spin" />
+                    Recherche...
+                  </div>
+                  <!-- Results -->
+                  <template v-else-if="emailSuggestions.length">
+                    <button
+                      v-for="s in emailSuggestions"
+                      :key="s.email"
+                      type="button"
+                      class="w-full px-3 py-2 text-left hover:bg-elevated/50 transition-colors flex items-center justify-between gap-2"
+                      @mousedown.prevent="selectEmailSuggestion(s)"
+                    >
+                      <div class="min-w-0">
+                        <p class="text-sm truncate">
+                          {{ s.email }}
+                        </p>
+                        <p class="text-xs text-muted truncate">
+                          {{ s.firstName }} {{ s.lastName }}
+                        </p>
+                      </div>
+                      <UIcon name="i-lucide-arrow-up-left" class="size-3.5 text-muted shrink-0" />
+                    </button>
+                  </template>
+                  <!-- No results -->
+                  <div v-else-if="emailSearchDone" class="px-3 py-3 text-sm text-muted">
+                    Aucun client trouvé
+                  </div>
+                </div>
+              </div>
             </UFormField>
           </div>
         </template>
