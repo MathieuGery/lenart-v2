@@ -20,8 +20,8 @@ watch(() => collection.value?.photos, () => {
   refreshLazy()
 })
 
-watch(() => cart.formula.value, () => {
-  nextTick(() => refreshLazy())
+watch(containerRef, () => {
+  if (containerRef.value) refreshLazy()
 })
 
 // Cart
