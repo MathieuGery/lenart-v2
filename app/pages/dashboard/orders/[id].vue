@@ -93,6 +93,25 @@ async function toggleBusinessStatus() {
   }
 }
 
+// Printed toggle
+const updatingPrinted = ref(false)
+
+async function togglePrinted() {
+  updatingPrinted.value = true
+  try {
+    await $fetch(`/api/orders/${id}`, {
+      method: 'PATCH',
+      body: { printed: !order.value?.printed }
+    })
+    await refresh()
+    toast.add({ title: 'Statut impression mis à jour' })
+  } catch {
+    toast.add({ title: 'Erreur lors de la mise à jour', color: 'error' })
+  } finally {
+    updatingPrinted.value = false
+  }
+}
+
 // Amazon link
 const amazonLinkInput = ref(order.value?.amazonLink ?? '')
 const savingAmazonLink = ref(false)
@@ -816,6 +835,24 @@ async function deleteComment(commentId: string) {
               >
                 {{ order.businessStatus === 'completed' ? 'Repasser en cours' : 'Marquer terminée' }}
               </UButton>
+            </div>
+          </div>
+
+          <!-- Printed -->
+          <div class="border border-default rounded-lg p-5">
+            <h2 class="text-sm font-medium mb-4">
+              Impression
+            </h2>
+            <div class="flex items-center gap-3">
+              <USwitch
+                :model-value="order.printed"
+                color="neutral"
+                :loading="updatingPrinted"
+                @update:model-value="togglePrinted"
+              />
+              <span class="text-sm">
+                {{ order.printed ? 'Photo imprimée' : 'Non imprimée' }}
+              </span>
             </div>
           </div>
 

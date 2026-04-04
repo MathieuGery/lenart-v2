@@ -12,6 +12,7 @@ export default defineEventHandler(async () => {
       status: orders.status,
       businessStatus: orders.businessStatus,
       cashPayment: orders.cashPayment,
+      printed: orders.printed,
       createdByAdmin: orders.createdByAdmin,
       totalCents: orders.totalCents,
       createdAt: orders.createdAt,

@@ -1,0 +1,1 @@
+ALTER TABLE "orders" ADD COLUMN "printed" boolean DEFAULT false NOT NULL;

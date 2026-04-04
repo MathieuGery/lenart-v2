@@ -20,6 +20,7 @@ const bodySchema = z.object({
     filename: z.string().min(1).max(255),
     collectionId: z.string().uuid().nullable().optional()
   })).optional(),
+  printed: z.boolean().optional(),
   amazonLink: z.string().url().max(1000).nullable().optional(),
   printPhotoId: z.string().uuid().nullable().optional(),
   printPhotoFilename: z.string().max(255).nullable().optional()
@@ -41,6 +42,7 @@ export default defineEventHandler(async (event) => {
   if (body.firstName) orderUpdate.firstName = body.firstName
   if (body.lastName) orderUpdate.lastName = body.lastName
   if (body.email) orderUpdate.email = body.email
+  if (body.printed !== undefined) orderUpdate.printed = body.printed
   if (body.amazonLink !== undefined) orderUpdate.amazonLink = body.amazonLink
   if (body.printPhotoId !== undefined) {
     orderUpdate.printPhotoId = body.printPhotoId

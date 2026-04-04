@@ -424,7 +424,7 @@ const DATE_RANGE_LABEL: Record<DateRange, string> = {
 }
 
 // Sort
-type SortKey = 'createdAt' | 'firstName' | 'totalCents' | 'photoCount' | 'status' | 'businessStatus' | 'cashPayment'
+type SortKey = 'createdAt' | 'firstName' | 'totalCents' | 'photoCount' | 'status' | 'businessStatus' | 'printed' | 'cashPayment'
 const sortKey = ref<SortKey>('createdAt')
 const sortDir = ref<'asc' | 'desc'>('desc')
 
@@ -486,6 +486,9 @@ const filteredOrders = computed(() => {
     } else if (sortKey.value === 'businessStatus') {
       valA = a.businessStatus
       valB = b.businessStatus
+    } else if (sortKey.value === 'printed') {
+      valA = a.printed ? 1 : 0
+      valB = b.printed ? 1 : 0
     } else if (sortKey.value === 'cashPayment') {
       valA = a.cashPayment ? 1 : 0
       valB = b.cashPayment ? 1 : 0
@@ -666,6 +669,21 @@ const filteredOrders = computed(() => {
                     />
                   </button>
                 </th>
+                <!-- Imprimé -->
+                <th class="text-left px-4 py-3 font-medium text-xs hidden sm:table-cell">
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1 text-muted hover:text-highlighted transition-colors"
+                    @click="toggleSort('printed')"
+                  >
+                    Imprimé
+                    <UIcon
+                      :name="sortKey === 'printed' ? (sortDir === 'asc' ? 'i-lucide-arrow-up' : 'i-lucide-arrow-down') : 'i-lucide-arrow-up-down'"
+                      class="size-3"
+                      :class="sortKey === 'printed' ? 'text-highlighted' : 'opacity-40'"
+                    />
+                  </button>
+                </th>
                 <!-- Sortable: Paiement -->
                 <th class="text-left px-4 py-3 font-medium text-xs hidden md:table-cell">
                   <button
@@ -742,6 +760,15 @@ const filteredOrders = computed(() => {
                     {{ BUSINESS_STATUS_LABEL[order.businessStatus] ?? order.businessStatus }}
                   </UBadge>
                 </td>
+                <td class="px-4 py-3 hidden sm:table-cell">
+                  <UBadge
+                    :color="order.printed ? 'success' : 'neutral'"
+                    variant="subtle"
+                    size="sm"
+                  >
+                    {{ order.printed ? 'Oui' : 'Non' }}
+                  </UBadge>
+                </td>
                 <td class="px-4 py-3 hidden md:table-cell">
                   <div class="flex items-center gap-1.5 text-xs">
                     <UIcon
@@ -777,7 +804,7 @@ const filteredOrders = computed(() => {
 
               <!-- Empty search result -->
               <tr v-if="!filteredOrders.length">
-                <td colspan="8" class="px-4 py-10 text-center text-sm text-muted">
+                <td colspan="9" class="px-4 py-10 text-center text-sm text-muted">
                   Aucune commande ne correspond à « {{ search }} ».
                 </td>
               </tr>

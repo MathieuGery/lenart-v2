@@ -57,6 +57,7 @@ export const orders = pgTable('orders', {
   totalCents: integer('total_cents').notNull(),
   printPhotoId: uuid('print_photo_id').references(() => photos.id, { onDelete: 'set null' }),
   printPhotoFilename: varchar('print_photo_filename', { length: 255 }),
+  printed: boolean('printed').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 }, (table) => [
