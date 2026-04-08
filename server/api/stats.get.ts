@@ -1,8 +1,23 @@
-import { eq, count, sum, desc, and, isNull, sql } from 'drizzle-orm'
+import { eq, count, sum, desc, and, isNull, sql, gte, lt } from 'drizzle-orm'
 import { orders, orderItems, photos, collections, contactMessages } from '~~/server/database/schema'
 import { db } from '~~/server/utils/db'
 
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
+  const query = getQuery(event)
+  const monthParam = query.month as string | undefined
+
+  // Build date range filter if month param provided (format: YYYY-MM)
+  let dateFilter: ReturnType<typeof and> | undefined
+  if (monthParam && /^\d{4}-\d{2}$/.test(monthParam)) {
+    const [year, month] = monthParam.split('-').map(Number)
+    const startDate = new Date(year, month - 1, 1)
+    const endDate = new Date(year, month, 1)
+    dateFilter = and(
+      gte(orders.createdAt, startDate),
+      lt(orders.createdAt, endDate)
+    )
+  }
+
   const [
     orderStats,
     photoStats,
@@ -22,6 +37,7 @@ export default defineEventHandler(async () => {
       totalCents: sum(orders.totalCents)
     })
       .from(orders)
+      .where(dateFilter)
       .groupBy(orders.status, orders.cashPayment),
 
     // Total photos in DB
@@ -35,7 +51,7 @@ export default defineEventHandler(async () => {
       .from(contactMessages)
       .where(eq(contactMessages.status, 'new')),
 
-    // Last 5 orders
+    // Last 5 orders (filtered by month)
     db.select({
       id: orders.id,
       firstName: orders.firstName,
@@ -48,37 +64,54 @@ export default defineEventHandler(async () => {
     })
       .from(orders)
       .leftJoin(orderItems, eq(orderItems.orderId, orders.id))
+      .where(dateFilter)
       .groupBy(orders.id)
       .orderBy(desc(orders.createdAt))
       .limit(5),
 
-    // Photos sold (from paid orders)
-    db.select({ total: count(orderItems.id) })
-      .from(orderItems)
-      .innerJoin(orders, and(
-        eq(orders.id, orderItems.orderId),
-        eq(orders.status, 'paid')
-      )),
+    // Photos sold (from paid orders, filtered by month)
+    dateFilter
+      ? db.select({ total: count(orderItems.id) })
+          .from(orderItems)
+          .innerJoin(orders, and(
+            eq(orders.id, orderItems.orderId),
+            eq(orders.status, 'paid'),
+            dateFilter
+          ))
+      : db.select({ total: count(orderItems.id) })
+          .from(orderItems)
+          .innerJoin(orders, and(
+            eq(orders.id, orderItems.orderId),
+            eq(orders.status, 'paid')
+          )),
 
     // Unlinked order items (photoId is null)
     db.select({ total: count(orderItems.id) })
       .from(orderItems)
       .where(isNull(orderItems.photoId)),
 
-    // Orders grouped by formula
+    // Orders grouped by formula (filtered by month)
     db.select({
       formulaName: orders.formulaName,
       orderCount: count(orders.id)
     })
       .from(orders)
+      .where(dateFilter)
       .groupBy(orders.formulaName),
 
-    // Orders by origin (stand vs site)
-    db.select({
-      stand: sql<number>`count(*) filter (where ${orders.createdByAdmin} = true)`.mapWith(Number),
-      site: sql<number>`count(*) filter (where ${orders.createdByAdmin} is null or ${orders.createdByAdmin} = false)`.mapWith(Number)
-    })
-      .from(orders)
+    // Orders by origin (stand vs site, filtered by month)
+    dateFilter
+      ? db.select({
+          stand: sql<number>`count(*) filter (where ${orders.createdByAdmin} = true)`.mapWith(Number),
+          site: sql<number>`count(*) filter (where ${orders.createdByAdmin} is null or ${orders.createdByAdmin} = false)`.mapWith(Number)
+        })
+          .from(orders)
+          .where(dateFilter)
+      : db.select({
+          stand: sql<number>`count(*) filter (where ${orders.createdByAdmin} = true)`.mapWith(Number),
+          site: sql<number>`count(*) filter (where ${orders.createdByAdmin} is null or ${orders.createdByAdmin} = false)`.mapWith(Number)
+        })
+          .from(orders)
   ])
 
   // Aggregate revenue and order counts

@@ -1,7 +1,28 @@
 <script setup lang="ts">
 const { user } = useUserSession()
 
-const { data: stats, status } = await useFetch<DashboardStats>('/api/stats')
+const now = new Date()
+const selectedMonth = ref(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`)
+
+const { data: stats, status, refresh } = await useFetch<DashboardStats>('/api/stats', {
+  query: { month: selectedMonth }
+})
+
+const monthLabel = computed(() => {
+  const [year, month] = selectedMonth.value.split('-').map(Number)
+  const date = new Date(year, month - 1)
+  return date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+})
+
+function changeMonth(delta: number) {
+  const [year, month] = selectedMonth.value.split('-').map(Number)
+  const d = new Date(year, month - 1 + delta)
+  selectedMonth.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+const isCurrentMonth = computed(() => {
+  return selectedMonth.value === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+})
 
 interface MollieAmount {
   currency: string
@@ -71,6 +92,26 @@ const STATUS_COLOR: Record<string, 'warning' | 'success' | 'error' | 'neutral'> 
       <UDashboardNavbar title="Dashboard">
         <template #leading>
           <UDashboardSidebarCollapse id="default" />
+        </template>
+        <template #right>
+          <div class="flex items-center gap-1">
+            <UButton
+              icon="i-lucide-chevron-left"
+              variant="ghost"
+              size="xs"
+              @click="changeMonth(-1)"
+            />
+            <span class="text-sm font-medium capitalize min-w-35 text-center">
+              {{ monthLabel }}
+            </span>
+            <UButton
+              icon="i-lucide-chevron-right"
+              variant="ghost"
+              size="xs"
+              :disabled="isCurrentMonth"
+              @click="changeMonth(1)"
+            />
+          </div>
         </template>
       </UDashboardNavbar>
     </template>
