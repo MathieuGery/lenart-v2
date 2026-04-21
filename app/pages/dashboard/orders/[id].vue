@@ -813,7 +813,7 @@ async function deleteComment(commentId: string) {
             </template>
           </div>
 
-          <!-- Business status -->
+          <!-- Business status + Impression -->
           <div class="border border-default rounded-lg p-5">
             <h2 class="text-sm font-medium mb-4">
               Avancement
@@ -836,14 +836,8 @@ async function deleteComment(commentId: string) {
                 {{ order.businessStatus === 'completed' ? 'Repasser en cours' : 'Marquer terminée' }}
               </UButton>
             </div>
-          </div>
 
-          <!-- Printed -->
-          <div class="border border-default rounded-lg p-5">
-            <h2 class="text-sm font-medium mb-4">
-              Impression
-            </h2>
-            <div class="flex items-center gap-3">
+            <div class="border-t border-default mt-4 pt-4 flex items-center gap-3">
               <USwitch
                 :model-value="order.printed"
                 color="neutral"
@@ -1009,11 +1003,6 @@ async function deleteComment(commentId: string) {
             </div>
           </div>
 
-          <!-- Mollie ID -->
-          <div v-if="order.molliePaymentId" class="text-xs text-muted">
-            Mollie ID : <span class="font-mono">{{ order.molliePaymentId }}</span>
-          </div>
-
           <!-- Comments -->
           <div class="border border-default rounded-lg p-5 space-y-4">
             <h2 class="text-sm font-medium">
@@ -1074,6 +1063,10 @@ async function deleteComment(commentId: string) {
                 square
               />
             </form>
+          </div>
+          <!-- Mollie ID -->
+          <div v-if="order.molliePaymentId" class="text-xs text-muted">
+            Mollie ID : <span class="font-mono">{{ order.molliePaymentId }}</span>
           </div>
         </template>
 

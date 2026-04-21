@@ -29,8 +29,7 @@ const form = reactive({
   lastName: '',
   email: '',
   paymentMethod: 'link' as 'link' | 'terminal' | 'cash',
-  terminalId: '',
-  formulaId: '' as string
+  terminalId: ''
 })
 interface PhotoItem {
   filename: string
@@ -39,12 +38,29 @@ interface PhotoItem {
   collectionName: string | null
 }
 
-const photoItems = ref<PhotoItem[]>([])
+interface SubOrder {
+  formulaId: string
+  photoItems: PhotoItem[]
+  printSelection: { type: 'linked', photoId: string } | { type: 'deferred', filename: string } | null
+}
+
+const subOrders = ref<SubOrder[]>([{ formulaId: '', photoItems: [], printSelection: null }])
+const activeSubOrderIndex = ref(0)
+const activeSubOrder = computed(() => subOrders.value[activeSubOrderIndex.value]!)
+
+// Bridge for backward compat — point to active sub-order
+const photoItems = computed({
+  get: () => activeSubOrder.value.photoItems,
+  set: (val) => { activeSubOrder.value.photoItems = val }
+})
+const printSelection = computed({
+  get: () => activeSubOrder.value.printSelection,
+  set: (val) => { activeSubOrder.value.printSelection = val }
+})
+
 const filenameInput = ref('')
 const creating = ref(false)
 const createdCheckoutUrl = ref<string | null>(null)
-// Print photo selection: linked photoId or deferred filename
-const printSelection = ref<{ type: 'linked', photoId: string } | { type: 'deferred', filename: string } | null>(null)
 
 // Photo search
 const searchResults = ref<{ id: string, filename: string, collectionId: string, collectionName: string }[]>([])
@@ -57,13 +73,17 @@ const { data: collectionsData } = await useFetch<CollectionListItem[]>('/api/col
 
 const collectionOptions = computed(() => [
   'Toutes les collections',
-  ...(collectionsData.value ?? []).map(c => c.name)
+  ...(collectionsData.value ?? []).map(c =>
+    `${c.name} — ${new Date(c.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`
+  )
 ])
 
 const selectedCollectionLabel = ref('Toutes les collections')
 
 watch(selectedCollectionLabel, (label) => {
-  const c = collectionsData.value?.find(c => c.name === label)
+  const c = collectionsData.value?.find(c =>
+    label.startsWith(c.name + ' — ')
+  )
   selectedCollectionId.value = c?.id
 })
 
@@ -113,30 +133,30 @@ function hideDropdown() {
 }
 
 // Backward compat
-const photoFilenames = computed(() => photoItems.value.map(p => p.filename))
+const photoFilenames = computed(() => subOrders.value.flatMap(so => so.photoItems.map(p => p.filename)))
 
 // Formulas
 const { data: formulas } = await useFetch<PricingFormula[]>('/api/public/pricing')
 
 const selectedFormula = computed(() => {
-  if (!form.formulaId) return null
-  return formulas.value?.find(f => f.id === form.formulaId) ?? null
+  if (!activeSubOrder.value.formulaId) return null
+  return formulas.value?.find(f => f.id === activeSubOrder.value.formulaId) ?? null
 })
 
 const maxPhotos = computed(() => {
   const f = selectedFormula.value
-  if (!f) return Infinity // sans formule = pas de limite
-  if (f.isTourComplete) return Infinity // tour complet = pas de limite
-  if (f.extraPhotoPriceCents != null) return Infinity // photos supplémentaires autorisées
-  return f.digitalPhotosCount // pas de supplément = limité au nombre inclus
+  if (!f) return Infinity
+  if (f.isTourComplete) return Infinity
+  if (f.extraPhotoPriceCents != null) return Infinity
+  return f.digitalPhotosCount
 })
 
 const canAddMore = computed(() => photoItems.value.length < maxPhotos.value)
 
 // Trim items when switching to a more restrictive formula
-watch(() => form.formulaId, () => {
+watch(() => activeSubOrder.value.formulaId, () => {
   if (photoItems.value.length > maxPhotos.value) {
-    photoItems.value.splice(maxPhotos.value)
+    activeSubOrder.value.photoItems = activeSubOrder.value.photoItems.slice(0, maxPhotos.value)
   }
 })
 
@@ -159,12 +179,12 @@ function addFilename() {
 }
 
 function removeFilename(index: number) {
-  const removed = photoItems.value[index]
-  photoItems.value.splice(index, 1)
+  const removed = activeSubOrder.value.photoItems[index]
+  activeSubOrder.value.photoItems.splice(index, 1)
   if (removed) {
-    const sel = printSelection.value
-    if (sel?.type === 'linked' && sel.photoId === removed.photoId) printSelection.value = null
-    else if (sel?.type === 'deferred' && sel.filename === removed.filename) printSelection.value = null
+    const sel = activeSubOrder.value.printSelection
+    if (sel?.type === 'linked' && sel.photoId === removed.photoId) activeSubOrder.value.printSelection = null
+    else if (sel?.type === 'deferred' && sel.filename === removed.filename) activeSubOrder.value.printSelection = null
   }
 }
 
@@ -193,7 +213,7 @@ async function validatePromo() {
   try {
     const result = await $fetch<{ valid: boolean, message?: string, code?: string, type?: string, value?: number }>('/api/public/promo-code/validate', {
       method: 'POST',
-      body: { code, formulaId: form.formulaId || undefined }
+      body: { code, formulaId: activeSubOrder.value.formulaId || undefined }
     })
     if (result.valid) {
       appliedPromo.value = { code: result.code!, type: result.type as 'percentage' | 'fixed', value: result.value! }
@@ -222,8 +242,8 @@ function openModal() {
   form.email = ''
   form.paymentMethod = 'link'
   form.terminalId = ''
-  form.formulaId = ''
-  photoItems.value = []
+  subOrders.value = [{ formulaId: '', photoItems: [], printSelection: null }]
+  activeSubOrderIndex.value = 0
   filenameInput.value = ''
   searchResults.value = []
   showDropdown.value = false
@@ -232,7 +252,6 @@ function openModal() {
   promoInput.value = ''
   promoError.value = null
   appliedPromo.value = null
-  printSelection.value = null
   step.value = 'info'
   emailTouched.value = false
   createdCheckoutUrl.value = null
@@ -242,20 +261,38 @@ function openModal() {
 // Settings (photo price)
 const { data: appSettings } = await useFetch<Record<string, string>>('/api/settings')
 
-const totalEuros = computed(() => {
-  const count = photoItems.value.length
-  if (count === 0) return '0.00'
-  if (form.formulaId) {
-    const f = formulas.value?.find(f => f.id === form.formulaId)
+function subOrderTotalCents(so: SubOrder): number {
+  const count = so.photoItems.length
+  if (count === 0) return 0
+  if (so.formulaId) {
+    const f = formulas.value?.find(f => f.id === so.formulaId)
     if (f) {
       const extra = Math.max(0, count - f.digitalPhotosCount)
       const extraCost = f.extraPhotoPriceCents != null ? extra * f.extraPhotoPriceCents : 0
-      return ((f.basePriceCents + extraCost) / 100).toFixed(2)
+      return f.basePriceCents + extraCost
     }
   }
   const priceCents = Number(appSettings.value?.photo_price_cents ?? 500)
-  return ((count * priceCents) / 100).toFixed(2)
+  return count * priceCents
+}
+
+const totalEuros = computed(() => {
+  const totalCents = subOrders.value.reduce((sum, so) => sum + subOrderTotalCents(so), 0)
+  return (totalCents / 100).toFixed(2)
 })
+
+function addSubOrder() {
+  subOrders.value.push({ formulaId: '', photoItems: [], printSelection: null })
+  activeSubOrderIndex.value = subOrders.value.length - 1
+}
+
+function removeSubOrder(index: number) {
+  if (subOrders.value.length <= 1) return
+  subOrders.value.splice(index, 1)
+  if (activeSubOrderIndex.value >= subOrders.value.length) {
+    activeSubOrderIndex.value = subOrders.value.length - 1
+  }
+}
 
 const hasPrint = computed(() => !!selectedFormula.value?.printDetails)
 
@@ -267,59 +304,95 @@ function isPrintSelected(item: PhotoItem) {
 
 function togglePrintSelection(item: PhotoItem) {
   if (isPrintSelected(item)) {
-    printSelection.value = null
+    activeSubOrder.value.printSelection = null
   } else if (item.photoId) {
-    printSelection.value = { type: 'linked', photoId: item.photoId }
+    activeSubOrder.value.printSelection = { type: 'linked', photoId: item.photoId }
   } else {
-    printSelection.value = { type: 'deferred', filename: item.filename }
+    activeSubOrder.value.printSelection = { type: 'deferred', filename: item.filename }
   }
 }
 
 async function createOrder() {
   creating.value = true
   try {
-    const linkedIds = photoItems.value.filter(p => p.photoId).map(p => p.photoId!)
-    const unlinkedItems = photoItems.value.filter(p => !p.photoId).map(p => ({
-      filename: p.filename,
-      collectionId: p.collectionId
-    }))
+    const subOrdersBodies = subOrders.value.map((so) => {
+      const linkedIds = so.photoItems.filter(p => p.photoId).map(p => p.photoId!)
+      const unlinkedItems = so.photoItems.filter(p => !p.photoId).map(p => ({
+        filename: p.filename,
+        collectionId: p.collectionId
+      }))
 
-    const printBody: Record<string, unknown> = {}
-    if (hasPrint.value && printSelection.value) {
-      if (printSelection.value.type === 'linked') {
-        printBody.printPhotoId = printSelection.value.photoId
-      } else {
-        printBody.printPhotoFilename = printSelection.value.filename
+      const printBody: Record<string, unknown> = {}
+      const soFormula = formulas.value?.find(f => f.id === so.formulaId)
+      if (soFormula?.printDetails && so.printSelection) {
+        if (so.printSelection.type === 'linked') {
+          printBody.printPhotoId = so.printSelection.photoId
+        } else {
+          printBody.printPhotoFilename = so.printSelection.filename
+        }
       }
-    }
 
-    const result = await $fetch<{ orderId: string, checkoutUrl: string | null }>('/api/orders', {
-      method: 'POST',
-      body: {
-        firstName: form.firstName,
-        lastName: form.lastName,
-        email: form.email,
+      return {
         photoIds: linkedIds.length ? linkedIds : undefined,
         photoFilenames: unlinkedItems.length ? unlinkedItems : undefined,
-        formulaId: form.formulaId || undefined,
-        promoCode: appliedPromo.value?.code || undefined,
-        ...printBody,
-        paymentMethod: form.paymentMethod,
-        terminalId: form.terminalId || undefined
+        formulaId: so.formulaId || undefined,
+        ...printBody
       }
     })
-    await refresh()
-    if (finalTotalCents.value === 0 && appliedPromo.value) {
-      toast.add({ title: 'Commande offerte (code promo 100%) — marquée payée', color: 'success' })
-      modalOpen.value = false
-    } else if (form.paymentMethod === 'link' && result.checkoutUrl) {
-      createdCheckoutUrl.value = result.checkoutUrl
-    } else if (form.paymentMethod === 'cash') {
-      toast.add({ title: 'Commande enregistrée — paiement en espèces', color: 'success' })
-      modalOpen.value = false
+
+    // Use batch endpoint if multiple sub-orders, else use single endpoint for backward compat
+    if (subOrdersBodies.length === 1) {
+      const result = await $fetch<{ orderId: string, checkoutUrl: string | null }>('/api/orders', {
+        method: 'POST',
+        body: {
+          firstName: form.firstName,
+          lastName: form.lastName,
+          email: form.email,
+          ...subOrdersBodies[0],
+          promoCode: appliedPromo.value?.code || undefined,
+          paymentMethod: form.paymentMethod,
+          terminalId: form.terminalId || undefined
+        }
+      })
+      await refresh()
+      if (finalTotalCents.value === 0 && appliedPromo.value) {
+        toast.add({ title: 'Commande offerte (code promo 100%) — marquée payée', color: 'success' })
+        modalOpen.value = false
+      } else if (form.paymentMethod === 'link' && result.checkoutUrl) {
+        createdCheckoutUrl.value = result.checkoutUrl
+      } else if (form.paymentMethod === 'cash') {
+        toast.add({ title: 'Commande enregistrée — paiement en espèces', color: 'success' })
+        modalOpen.value = false
+      } else {
+        toast.add({ title: 'Commande envoyée au terminal', color: 'success' })
+        modalOpen.value = false
+      }
     } else {
-      toast.add({ title: 'Commande envoyée au terminal', color: 'success' })
-      modalOpen.value = false
+      const result = await $fetch<{ orderIds: string[], checkoutUrl: string | null }>('/api/orders/batch', {
+        method: 'POST',
+        body: {
+          firstName: form.firstName,
+          lastName: form.lastName,
+          email: form.email,
+          subOrders: subOrdersBodies,
+          promoCode: appliedPromo.value?.code || undefined,
+          paymentMethod: form.paymentMethod,
+          terminalId: form.terminalId || undefined
+        }
+      })
+      await refresh()
+      if (finalTotalCents.value === 0 && appliedPromo.value) {
+        toast.add({ title: `${result.orderIds.length} commandes offertes (code promo 100%)`, color: 'success' })
+        modalOpen.value = false
+      } else if (form.paymentMethod === 'link' && result.checkoutUrl) {
+        createdCheckoutUrl.value = result.checkoutUrl
+      } else if (form.paymentMethod === 'cash') {
+        toast.add({ title: `${result.orderIds.length} commandes enregistrées — paiement en espèces`, color: 'success' })
+        modalOpen.value = false
+      } else {
+        toast.add({ title: `${result.orderIds.length} commandes envoyées au terminal`, color: 'success' })
+        modalOpen.value = false
+      }
     }
   } catch (e: unknown) {
     toast.add({ title: (e as { data?: { message?: string } })?.data?.message ?? 'Erreur lors de la création', color: 'error' })
@@ -379,7 +452,7 @@ function selectEmailSuggestion(suggestion: { email: string, firstName: string, l
 
 function canAdvance(s: typeof step.value) {
   if (s === 'info') return form.firstName && form.lastName && form.email && emailValid.value
-  if (s === 'photos') return photoItems.value.length > 0
+  if (s === 'photos') return subOrders.value.every(so => so.photoItems.length > 0)
   return true
 }
 
@@ -915,6 +988,49 @@ const filteredOrders = computed(() => {
         <!-- Step 2 – Photos (filenames) + Formula -->
         <template v-else-if="step === 'photos'">
           <div class="space-y-4">
+            <!-- Sub-order tabs -->
+            <div v-if="subOrders.length > 1" class="flex flex-wrap items-center gap-1.5 pb-2 border-b border-default">
+              <button
+                v-for="(so, idx) in subOrders"
+                :key="idx"
+                type="button"
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                :class="activeSubOrderIndex === idx ? 'bg-primary/10 text-primary border border-primary/30' : 'bg-elevated/50 text-muted hover:text-highlighted border border-default'"
+                @click="activeSubOrderIndex = idx"
+              >
+                Cmd {{ idx + 1 }}
+                <span class="tabular-nums">({{ so.photoItems.length }})</span>
+                <button
+                  v-if="subOrders.length > 1"
+                  type="button"
+                  class="ml-0.5 text-muted hover:text-error"
+                  @click.stop="removeSubOrder(idx)"
+                >
+                  <UIcon name="i-lucide-x" class="size-3" />
+                </button>
+              </button>
+              <button
+                type="button"
+                class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs text-muted hover:text-highlighted border border-dashed border-default hover:border-muted transition-colors"
+                @click="addSubOrder"
+              >
+                <UIcon name="i-lucide-plus" class="size-3" />
+                Commande
+              </button>
+            </div>
+
+            <!-- Add sub-order button (when only 1) -->
+            <div v-else class="flex justify-end">
+              <button
+                type="button"
+                class="flex items-center gap-1.5 text-xs text-muted hover:text-highlighted transition-colors"
+                @click="addSubOrder"
+              >
+                <UIcon name="i-lucide-plus" class="size-3.5" />
+                Ajouter une commande
+              </button>
+            </div>
+
             <!-- Formula selector -->
             <div class="space-y-2">
               <label class="text-sm font-medium">Formule</label>
@@ -922,8 +1038,8 @@ const filteredOrders = computed(() => {
                 <button
                   type="button"
                   class="px-3 py-2 rounded-lg border-2 text-left text-sm transition-colors"
-                  :class="!form.formulaId ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
-                  @click="form.formulaId = ''"
+                  :class="!activeSubOrder.formulaId ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
+                  @click="activeSubOrder.formulaId = ''"
                 >
                   <p class="font-medium">
                     Sans formule
@@ -937,8 +1053,8 @@ const filteredOrders = computed(() => {
                   :key="f.id"
                   type="button"
                   class="px-3 py-2 rounded-lg border-2 text-left text-sm transition-colors"
-                  :class="form.formulaId === f.id ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
-                  @click="form.formulaId = f.id"
+                  :class="activeSubOrder.formulaId === f.id ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
+                  @click="activeSubOrder.formulaId = f.id"
                 >
                   <p class="font-medium">
                     {{ f.name }}
@@ -1078,11 +1194,14 @@ const filteredOrders = computed(() => {
             <div class="text-xs text-muted space-y-0.5">
               <p>
                 {{ photoItems.length }} photo{{ photoItems.length !== 1 ? 's' : '' }}
-                <span v-if="photoItems.length > 0"> — {{ totalEuros }} €</span>
+                <span v-if="photoItems.length > 0"> — {{ (subOrderTotalCents(activeSubOrder) / 100).toFixed(2) }} €</span>
               </p>
               <p v-if="selectedFormula && photoItems.length > selectedFormula.digitalPhotosCount && selectedFormula.extraPhotoPriceCents != null">
                 dont {{ photoItems.length - selectedFormula.digitalPhotosCount }} supplémentaire{{ photoItems.length - selectedFormula.digitalPhotosCount !== 1 ? 's' : '' }}
                 (+{{ (((photoItems.length - selectedFormula.digitalPhotosCount) * selectedFormula.extraPhotoPriceCents) / 100).toFixed(2) }} €)
+              </p>
+              <p v-if="subOrders.length > 1" class="pt-1 border-t border-default font-medium text-highlighted">
+                Total {{ subOrders.length }} commandes : {{ totalEuros }} €
               </p>
             </div>
 
@@ -1158,7 +1277,12 @@ const filteredOrders = computed(() => {
 
           <template v-else>
             <p class="text-sm font-medium mb-1">
-              {{ photoFilenames.length }} photo{{ photoFilenames.length !== 1 ? 's' : '' }} — {{ totalEuros }} €
+              <template v-if="subOrders.length === 1">
+                {{ photoFilenames.length }} photo{{ photoFilenames.length !== 1 ? 's' : '' }} — {{ totalEuros }} €
+              </template>
+              <template v-else>
+                {{ subOrders.length }} commandes — {{ photoFilenames.length }} photo{{ photoFilenames.length !== 1 ? 's' : '' }} — {{ totalEuros }} €
+              </template>
             </p>
             <p v-if="appliedPromo" class="text-sm font-medium text-green-600 dark:text-green-400 mb-4">
               Remise : -{{ (discountCents / 100).toFixed(2) }} € → {{ (finalTotalCents / 100).toFixed(2) }} €
