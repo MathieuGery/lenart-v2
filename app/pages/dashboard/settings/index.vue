@@ -10,6 +10,7 @@ const watermarkSize = ref(Number(settings.value?.watermark_size ?? 15))
 const watermarkSpacing = ref(Number(settings.value?.watermark_spacing ?? 60))
 const watermarkOpacity = ref(Number(settings.value?.watermark_opacity ?? 40))
 const watermarkMode = ref<'grid' | 'centered'>(settings.value?.watermark_mode === 'centered' ? 'centered' : 'grid')
+const filenameSize = ref(Number(settings.value?.filename_size ?? 2))
 const saving = ref(false)
 
 // Watermark
@@ -63,7 +64,8 @@ async function save() {
         watermark_size: String(watermarkSize.value),
         watermark_spacing: String(watermarkSpacing.value),
         watermark_opacity: String(watermarkOpacity.value),
-        watermark_mode: watermarkMode.value
+        watermark_mode: watermarkMode.value,
+        filename_size: String(filenameSize.value)
       }
     })
     await refresh()
@@ -314,6 +316,36 @@ async function save() {
                 >
               </label>
             </div>
+          </div>
+        </div>
+
+        <!-- Nom de fichier sur les photos -->
+        <div class="space-y-4">
+          <div>
+            <h2 class="text-sm font-medium">
+              Nom de fichier
+            </h2>
+            <p class="text-xs text-muted mt-1">
+              Le nom du fichier est affiché en rouge en bas à droite de chaque photo uploadée.
+            </p>
+          </div>
+
+          <div class="border border-default rounded-lg p-4 space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="text-sm">Taille du texte</label>
+              <span class="text-sm font-medium tabular-nums">{{ filenameSize }}%</span>
+            </div>
+            <input
+              v-model.number="filenameSize"
+              type="range"
+              min="1"
+              max="5"
+              step="0.5"
+              class="w-full h-1.5 accent-stone-600 cursor-pointer"
+            >
+            <p class="text-xs text-muted">
+              Taille du texte par rapport à la largeur de l'image. 2% par défaut.
+            </p>
           </div>
         </div>
 

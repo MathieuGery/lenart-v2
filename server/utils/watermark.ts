@@ -2,6 +2,7 @@ import sharp from 'sharp'
 import { inArray } from 'drizzle-orm'
 import { settings } from '~~/server/database/schema'
 import { db } from '~~/server/utils/db'
+import { getSetting } from '~~/server/utils/settings'
 
 export const WATERMARK_S3_KEY = 'settings/watermark.png'
 
@@ -131,4 +132,48 @@ export async function applyWatermark(imageBuffer: Buffer | Uint8Array): Promise<
     .composite([{ input: overlay, blend: 'over' }])
     .jpeg({ quality: 95 })
     .toBuffer()
+}
+
+/**
+ * Overlay the filename in red text at the bottom-right corner of the image.
+ */
+export async function overlayFilename(imageBuffer: Buffer | Uint8Array, filename: string): Promise<Buffer> {
+  const image = sharp(imageBuffer)
+  const metadata = await image.metadata()
+  const imgWidth = metadata.width || 1920
+  const imgHeight = metadata.height || 1080
+
+  // Scale font size relative to image width (configurable via settings)
+  const filenameSizePct = Number(await getSetting('filename_size', '2')) / 100
+  const fontSize = Math.max(16, Math.round(imgWidth * filenameSizePct))
+  const padding = Math.round(fontSize * 0.6)
+
+  // Strip extension from filename for display
+  const displayName = filename.replace(/\.[^.]+$/, '')
+
+  const svgText = `<svg width="${imgWidth}" height="${imgHeight}">
+    <style>
+      .filename {
+        fill: red;
+        font-size: ${fontSize}px;
+        font-family: sans-serif;
+        font-weight: bold;
+      }
+    </style>
+    <text x="${imgWidth - padding}" y="${imgHeight - padding}" text-anchor="end" class="filename">${escapeXml(displayName)}</text>
+  </svg>`
+
+  return image
+    .composite([{ input: Buffer.from(svgText), blend: 'over' }])
+    .jpeg({ quality: 95 })
+    .toBuffer()
+}
+
+function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;')
 }
