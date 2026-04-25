@@ -84,10 +84,12 @@ export interface Terminal {
 export interface PublicOrderDetail {
   id: string
   status: string
+  businessStatus: string
   cashPayment: boolean
   email: string
   firstName: string
   lastName: string
+  formulaName: string | null
   totalCents: number
   photoCount: number
   photos: { id: string, filename: string, url: string }[]

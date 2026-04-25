@@ -31,10 +31,12 @@ export default defineEventHandler(async (event) => {
   return {
     id: order.id,
     status: order.status,
+    businessStatus: order.businessStatus,
     cashPayment: order.cashPayment,
     email: order.email,
     firstName: order.firstName,
     lastName: order.lastName,
+    formulaName: order.formulaName,
     totalCents: order.totalCents,
     photoCount: items.length,
     photos: photosWithUrls,
