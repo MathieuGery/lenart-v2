@@ -17,8 +17,8 @@ RUN --mount=type=cache,target=/root/.npm \
 FROM node:24-alpine AS production
 WORKDIR /app
 
-# Install librsvg for sharp SVG support
-RUN apk add --no-cache librsvg
+# Install librsvg and fonts for sharp SVG support
+RUN apk add --no-cache librsvg fontconfig dejavu-fonts
 
 COPY --from=build /app/.output/ ./
 ENV PORT=80
