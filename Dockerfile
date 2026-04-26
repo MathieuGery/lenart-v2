@@ -16,6 +16,10 @@ RUN --mount=type=cache,target=/root/.npm \
 # Stage 3: Production
 FROM node:24-alpine AS production
 WORKDIR /app
+
+# Install librsvg for sharp SVG support
+RUN apk add --no-cache librsvg
+
 COPY --from=build /app/.output/ ./
 ENV PORT=80
 ENV HOST=0.0.0.0
