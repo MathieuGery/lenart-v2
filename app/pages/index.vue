@@ -7,6 +7,8 @@ const { data: collections } = await useFetch<PublicCollectionListItem[]>('/api/p
 
 const recentCollections = computed(() => collections.value?.slice(0, 3) ?? [])
 
+const mobileCollections = computed(() => collections.value ?? [])
+
 const coverPhotos = computed(() => collections.value?.slice(0, 4).map(c => c.coverUrl).filter(Boolean) ?? [])
 
 const totalPhotos = computed(() => collections.value?.reduce((sum, c) => sum + c.photoCount, 0) ?? 0)
@@ -147,7 +149,8 @@ const steps = [
     <!-- Recent collections -->
     <section class="pb-24 sm:pb-32 border-t border-default pt-20 sm:pt-28">
       <div class="max-w-6xl mx-auto px-6 lg:px-8">
-        <div class="flex items-baseline justify-between mb-10">
+        <!-- Header with "Tout voir" link (desktop only) -->
+        <div class="hidden md:flex items-baseline justify-between mb-10">
           <h2 class="text-sm font-medium uppercase tracking-widest text-muted">
             Derniers concours
           </h2>
@@ -160,8 +163,13 @@ const steps = [
           </NuxtLink>
         </div>
 
-        <!-- Real data -->
-        <div v-if="recentCollections.length" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Mobile header -->
+        <h2 class="md:hidden text-sm font-medium uppercase tracking-widest text-muted mb-10">
+          Concours disponibles
+        </h2>
+
+        <!-- Desktop: 3 recent collections -->
+        <div v-if="recentCollections.length" class="hidden md:grid grid-cols-1 md:grid-cols-3 gap-6">
           <NuxtLink
             v-for="collection in recentCollections"
             :key="collection.id"
@@ -191,8 +199,39 @@ const steps = [
           </NuxtLink>
         </div>
 
-        <!-- No collections yet -->
-        <div v-else class="py-20 text-center">
+        <!-- Mobile: all collections -->
+        <div v-if="mobileCollections.length" class="md:hidden grid grid-cols-1 gap-6">
+          <NuxtLink
+            v-for="collection in mobileCollections"
+            :key="collection.id"
+            :to="`/concours/${collection.id}`"
+            class="group"
+          >
+            <div class="relative aspect-4/3 overflow-hidden bg-muted/10">
+              <img
+                v-if="collection.coverUrl"
+                :src="collection.coverUrl"
+                :alt="collection.name"
+                class="size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+              >
+              <div v-else class="size-full flex items-center justify-center">
+                <UIcon name="i-lucide-image" class="size-8 text-muted/30" />
+              </div>
+            </div>
+            <div class="mt-3 flex items-baseline justify-between gap-2">
+              <h3 class="text-sm font-medium group-hover:underline underline-offset-4 truncate">
+                {{ collection.name }}
+              </h3>
+              <span class="text-xs text-muted shrink-0">{{ collection.photoCount }} photos</span>
+            </div>
+            <p class="text-xs text-muted mt-1">
+              {{ new Date(collection.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) }}
+            </p>
+          </NuxtLink>
+        </div>
+
+        <!-- No collections yet (both) -->
+        <div v-if="!recentCollections.length && !mobileCollections.length" class="py-20 text-center">
           <UIcon name="i-lucide-calendar-x" class="size-10 text-muted/30 mx-auto" />
           <p class="mt-4 text-sm text-muted">
             Aucun concours disponible pour le moment.
@@ -200,6 +239,20 @@ const steps = [
           <p class="text-xs text-muted/60 mt-1">
             Revenez bientôt !
           </p>
+        </div>
+
+        <!-- Mobile CTA button -->
+        <div v-if="mobileCollections.length" class="md:hidden mt-10 flex justify-center">
+          <UButton
+            to="/concours"
+            size="lg"
+            color="neutral"
+            variant="solid"
+            trailing-icon="i-lucide-arrow-right"
+            class="w-full sm:w-auto"
+          >
+            Voir tous les concours
+          </UButton>
         </div>
       </div>
     </section>
