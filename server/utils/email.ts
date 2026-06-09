@@ -57,10 +57,12 @@ export async function sendOrderConfirmationEmail(data: OrderConfirmationData) {
 
       <div style="background:#f9fafb;border-radius:8px;padding:16px;margin-bottom:24px">
         <table style="width:100%;font-size:14px;border-collapse:collapse">
-          ${data.formulaName ? `<tr>
+          ${data.formulaName
+            ? `<tr>
             <td style="padding:4px 0;color:#6b7280">Formule</td>
             <td style="padding:4px 0;text-align:right;font-weight:500">${data.formulaName}</td>
-          </tr>` : ''}
+          </tr>`
+            : ''}
           <tr>
             <td style="padding:4px 0;color:#6b7280">Photos</td>
             <td style="padding:4px 0;text-align:right;font-weight:500">${data.photoCount}</td>

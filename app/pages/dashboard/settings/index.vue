@@ -191,7 +191,13 @@ async function save() {
                 </div>
                 <div class="flex flex-col gap-2">
                   <label class="cursor-pointer">
-                    <UButton as="span" variant="outline" icon="i-lucide-upload" :loading="uploadingWatermark" size="sm">
+                    <UButton
+                      as="span"
+                      variant="outline"
+                      icon="i-lucide-upload"
+                      :loading="uploadingWatermark"
+                      size="sm"
+                    >
                       Remplacer
                     </UButton>
                     <input
@@ -215,89 +221,89 @@ async function save() {
               </div>
 
               <div class="border-t border-default pt-4 space-y-4">
-              <!-- Mode -->
-              <div class="space-y-2">
-                <label class="text-sm font-medium">Mode d'affichage</label>
-                <div class="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    class="flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border-2 transition-colors"
-                    :class="watermarkMode === 'centered' ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
-                    @click="watermarkMode = 'centered'"
+                <!-- Mode -->
+                <div class="space-y-2">
+                  <label class="text-sm font-medium">Mode d'affichage</label>
+                  <div class="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      class="flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border-2 transition-colors"
+                      :class="watermarkMode === 'centered' ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
+                      @click="watermarkMode = 'centered'"
+                    >
+                      <UIcon name="i-lucide-maximize" class="size-5" />
+                      <span class="text-xs font-medium">Centré</span>
+                      <span class="text-[10px] text-muted text-center leading-tight">Un seul watermark, grand et centré</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border-2 transition-colors"
+                      :class="watermarkMode === 'grid' ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
+                      @click="watermarkMode = 'grid'"
+                    >
+                      <UIcon name="i-lucide-grid-2x2" class="size-5" />
+                      <span class="text-xs font-medium">Grille</span>
+                      <span class="text-[10px] text-muted text-center leading-tight">Watermark répété en mosaïque</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Taille -->
+                <div class="space-y-2">
+                  <div class="flex items-center justify-between">
+                    <label class="text-sm">Taille</label>
+                    <span class="text-sm font-medium tabular-nums">{{ watermarkSize }}%</span>
+                  </div>
+                  <input
+                    v-model.number="watermarkSize"
+                    type="range"
+                    min="5"
+                    :max="watermarkMode === 'centered' ? 100 : 50"
+                    step="1"
+                    class="w-full h-1.5 accent-stone-600 cursor-pointer"
                   >
-                    <UIcon name="i-lucide-maximize" class="size-5" />
-                    <span class="text-xs font-medium">Centré</span>
-                    <span class="text-[10px] text-muted text-center leading-tight">Un seul watermark, grand et centré</span>
-                  </button>
-                  <button
-                    type="button"
-                    class="flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border-2 transition-colors"
-                    :class="watermarkMode === 'grid' ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
-                    @click="watermarkMode = 'grid'"
+                  <p class="text-xs text-muted">
+                    Taille du watermark par rapport à la largeur de l'image.
+                  </p>
+                </div>
+
+                <!-- Espacement (grille uniquement) -->
+                <div v-if="watermarkMode === 'grid'" class="space-y-2">
+                  <div class="flex items-center justify-between">
+                    <label class="text-sm">Espacement</label>
+                    <span class="text-sm font-medium tabular-nums">{{ watermarkSpacing }}%</span>
+                  </div>
+                  <input
+                    v-model.number="watermarkSpacing"
+                    type="range"
+                    min="0"
+                    max="200"
+                    step="10"
+                    class="w-full h-1.5 accent-stone-600 cursor-pointer"
                   >
-                    <UIcon name="i-lucide-grid-2x2" class="size-5" />
-                    <span class="text-xs font-medium">Grille</span>
-                    <span class="text-[10px] text-muted text-center leading-tight">Watermark répété en mosaïque</span>
-                  </button>
+                  <p class="text-xs text-muted">
+                    Espacement entre chaque watermark dans la grille (en % de la taille du watermark).
+                  </p>
                 </div>
-              </div>
 
-              <!-- Taille -->
-              <div class="space-y-2">
-                <div class="flex items-center justify-between">
-                  <label class="text-sm">Taille</label>
-                  <span class="text-sm font-medium tabular-nums">{{ watermarkSize }}%</span>
+                <!-- Opacité -->
+                <div class="space-y-2">
+                  <div class="flex items-center justify-between">
+                    <label class="text-sm">Opacité</label>
+                    <span class="text-sm font-medium tabular-nums">{{ watermarkOpacity }}%</span>
+                  </div>
+                  <input
+                    v-model.number="watermarkOpacity"
+                    type="range"
+                    min="5"
+                    max="100"
+                    step="5"
+                    class="w-full h-1.5 accent-stone-600 cursor-pointer"
+                  >
+                  <p class="text-xs text-muted">
+                    Opacité du watermark. 100% = totalement opaque.
+                  </p>
                 </div>
-                <input
-                  v-model.number="watermarkSize"
-                  type="range"
-                  min="5"
-                  :max="watermarkMode === 'centered' ? 100 : 50"
-                  step="1"
-                  class="w-full h-1.5 accent-stone-600 cursor-pointer"
-                >
-                <p class="text-xs text-muted">
-                  Taille du watermark par rapport à la largeur de l'image.
-                </p>
-              </div>
-
-              <!-- Espacement (grille uniquement) -->
-              <div v-if="watermarkMode === 'grid'" class="space-y-2">
-                <div class="flex items-center justify-between">
-                  <label class="text-sm">Espacement</label>
-                  <span class="text-sm font-medium tabular-nums">{{ watermarkSpacing }}%</span>
-                </div>
-                <input
-                  v-model.number="watermarkSpacing"
-                  type="range"
-                  min="0"
-                  max="200"
-                  step="10"
-                  class="w-full h-1.5 accent-stone-600 cursor-pointer"
-                >
-                <p class="text-xs text-muted">
-                  Espacement entre chaque watermark dans la grille (en % de la taille du watermark).
-                </p>
-              </div>
-
-              <!-- Opacité -->
-              <div class="space-y-2">
-                <div class="flex items-center justify-between">
-                  <label class="text-sm">Opacité</label>
-                  <span class="text-sm font-medium tabular-nums">{{ watermarkOpacity }}%</span>
-                </div>
-                <input
-                  v-model.number="watermarkOpacity"
-                  type="range"
-                  min="5"
-                  max="100"
-                  step="5"
-                  class="w-full h-1.5 accent-stone-600 cursor-pointer"
-                >
-                <p class="text-xs text-muted">
-                  Opacité du watermark. 100% = totalement opaque.
-                </p>
-              </div>
               </div>
             </template>
 
@@ -307,7 +313,13 @@ async function save() {
                 Aucun watermark configuré
               </p>
               <label class="cursor-pointer">
-                <UButton as="span" variant="outline" icon="i-lucide-upload" :loading="uploadingWatermark" size="sm">
+                <UButton
+                  as="span"
+                  variant="outline"
+                  icon="i-lucide-upload"
+                  :loading="uploadingWatermark"
+                  size="sm"
+                >
                   Uploader un watermark
                 </UButton>
                 <input
