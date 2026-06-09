@@ -11,6 +11,7 @@ const watermarkSpacing = ref(Number(settings.value?.watermark_spacing ?? 60))
 const watermarkOpacity = ref(Number(settings.value?.watermark_opacity ?? 40))
 const watermarkMode = ref<'grid' | 'centered'>(settings.value?.watermark_mode === 'centered' ? 'centered' : 'grid')
 const filenameSize = ref(Number(settings.value?.filename_size ?? 2))
+const contactNotificationEmail = ref(settings.value?.contact_notification_email ?? '')
 const saving = ref(false)
 
 // Watermark
@@ -65,7 +66,8 @@ async function save() {
         watermark_spacing: String(watermarkSpacing.value),
         watermark_opacity: String(watermarkOpacity.value),
         watermark_mode: watermarkMode.value,
-        filename_size: String(filenameSize.value)
+        filename_size: String(filenameSize.value),
+        contact_notification_email: contactNotificationEmail.value
       }
     })
     await refresh()
@@ -345,6 +347,31 @@ async function save() {
             >
             <p class="text-xs text-muted">
               Taille du texte par rapport à la largeur de l'image. 2% par défaut.
+            </p>
+          </div>
+        </div>
+
+        <!-- Notifications -->
+        <div class="space-y-4">
+          <div>
+            <h2 class="text-sm font-medium">
+              Notifications
+            </h2>
+            <p class="text-xs text-muted mt-1">
+              Adresse e-mail prévenue lorsqu'un visiteur envoie un message via le formulaire de contact.
+            </p>
+          </div>
+
+          <div class="border border-default rounded-lg p-4 space-y-2">
+            <label class="text-sm">E-mail de notification</label>
+            <UInput
+              v-model="contactNotificationEmail"
+              type="email"
+              placeholder="admin@len-art.fr"
+              class="w-full"
+            />
+            <p class="text-xs text-muted">
+              Laissez vide pour désactiver les notifications de contact par e-mail.
             </p>
           </div>
         </div>

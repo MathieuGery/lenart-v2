@@ -166,3 +166,77 @@ export async function sendPhotosReadyEmail(data: PhotosReadyData) {
     throw new Error('Échec de l\'envoi de l\'e-mail')
   }
 }
+
+interface ContactNotificationData {
+  to: string
+  name: string
+  email: string
+  subject: string
+  message: string
+}
+
+export async function sendContactNotificationEmail(data: ContactNotificationData) {
+  const r = getResend()
+
+  const messageHtml = data.message
+    .split('\n')
+    .map(line => line || '&nbsp;')
+    .join('<br>')
+
+  const html = `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f9fafb">
+  <div style="max-width:560px;margin:0 auto;padding:40px 24px">
+    <div style="background:#ffffff;border-radius:12px;padding:32px;border:1px solid #e5e7eb">
+      <h1 style="font-size:20px;font-weight:600;margin:0 0 8px;color:#111">
+        Nouveau message de contact
+      </h1>
+      <p style="font-size:14px;color:#6b7280;margin:0 0 24px">
+        Un visiteur a envoyé un message via le formulaire de contact du site.
+      </p>
+
+      <div style="background:#f9fafb;border-radius:8px;padding:16px;margin-bottom:24px">
+        <table style="width:100%;font-size:14px;border-collapse:collapse">
+          <tr>
+            <td style="padding:4px 0;color:#6b7280">Nom</td>
+            <td style="padding:4px 0;text-align:right;font-weight:500">${data.name}</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 0;color:#6b7280">E-mail</td>
+            <td style="padding:4px 0;text-align:right;font-weight:500">${data.email}</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 0;color:#6b7280">Sujet</td>
+            <td style="padding:4px 0;text-align:right;font-weight:500">${data.subject}</td>
+          </tr>
+        </table>
+      </div>
+
+      <div style="margin-bottom:24px">
+        <p style="font-size:13px;font-weight:600;color:#111;margin:0 0 8px">Message :</p>
+        <p style="font-size:14px;color:#374151;margin:0;line-height:1.6;white-space:pre-wrap">${messageHtml}</p>
+      </div>
+
+      <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0 16px">
+      <p style="font-size:12px;color:#9ca3af;margin:0;text-align:center">
+        Len'art Photographie
+      </p>
+    </div>
+  </div>
+</body>
+</html>`
+
+  const { error } = await r.emails.send({
+    from: 'Len\'art <contact@len-art.fr>',
+    to: [data.to],
+    replyTo: data.email,
+    subject: `Nouveau message de contact : ${data.subject}`,
+    html
+  })
+
+  if (error) {
+    console.error('[Resend] Failed to send contact notification:', error)
+  }
+}
