@@ -102,6 +102,14 @@ function formatValue(promo: PromoCode) {
   if (promo.type === 'percentage') return `${promo.value}%`
   return `${(promo.value / 100).toFixed(2)} €`
 }
+
+function generatePromoCode() {
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+  const digit = () => Math.floor(Math.random() * 10).toString()
+  const letter = () => letters[Math.floor(Math.random() * letters.length)]
+
+  form.code = `${letter()}${digit()}${letter()}${digit()}${letter()}${digit()}`
+}
 </script>
 
 <template>
@@ -204,7 +212,22 @@ function formatValue(promo: PromoCode) {
         <div class="space-y-4">
           <!-- Code -->
           <UFormField label="Code">
-            <UInput v-model="form.code" placeholder="PROMO2025" color="neutral" class="w-full uppercase" />
+            <div class="flex items-center gap-2">
+              <UInput
+                v-model="form.code"
+                placeholder="PROMO2025"
+                color="neutral"
+                class="w-full uppercase"
+              />
+              <UButton
+                color="neutral"
+                variant="soft"
+                icon="i-lucide-refresh-cw"
+                @click="generatePromoCode()"
+              >
+                Générer
+              </UButton>
+            </div>
           </UFormField>
 
           <!-- Type -->
