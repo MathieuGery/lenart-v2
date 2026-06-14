@@ -104,8 +104,9 @@ function formatValue(promo: PromoCode) {
 }
 
 function generatePromoCode() {
-  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-  const digit = () => Math.floor(Math.random() * 10).toString()
+  const letters = 'ABCDEFGHIJKLMNPQRSTUVWXYZ'
+  const digits = '123456789'
+  const digit = () => digits[Math.floor(Math.random() * digits.length)]
   const letter = () => letters[Math.floor(Math.random() * letters.length)]
 
   form.code = `${letter()}${digit()}${letter()}${digit()}${letter()}${digit()}`
