@@ -1,6 +1,7 @@
 export default defineNuxtRouteMiddleware(async (to) => {
-  const publicRoutes = ['/login', '/', '/concours', '/about', '/contact', '/galeries']
-  const isPublic = publicRoutes.some(r => to.path === r || to.path.startsWith('/concours/'))
+  const publicRoutes = ['/login', '/', '/concours', '/about', '/contact', '/galeries', '/commande']
+  const publicPrefixes = ['/concours/', '/galeries/', '/commande/']
+  const isPublic = publicRoutes.includes(to.path) || publicPrefixes.some(prefix => to.path.startsWith(prefix))
 
   if (isPublic) return
 
