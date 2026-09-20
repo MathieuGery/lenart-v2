@@ -260,6 +260,7 @@ function openModal() {
 
 // Settings (photo price)
 const { data: appSettings } = await useFetch<Record<string, string>>('/api/settings')
+const cashPaymentEnabled = computed(() => appSettings.value?.cash_payment_enabled !== 'false')
 
 function subOrderTotalCents(so: SubOrder): number {
   const count = so.photoItems.length
@@ -1337,7 +1338,7 @@ const filteredOrders = computed(() => {
             </div>
 
             <!-- Method selection -->
-            <div class="grid grid-cols-3 gap-3 mb-5">
+            <div class="grid gap-3 mb-5" :class="cashPaymentEnabled ? 'grid-cols-3' : 'grid-cols-2'">
               <button
                 type="button"
                 class="flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors text-sm"
@@ -1349,6 +1350,7 @@ const filteredOrders = computed(() => {
                 <span class="text-xs text-muted text-center">Lien Mollie au client</span>
               </button>
               <button
+                v-if="cashPaymentEnabled"
                 type="button"
                 class="flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors text-sm"
                 :class="form.paymentMethod === 'terminal' ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"

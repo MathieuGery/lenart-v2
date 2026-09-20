@@ -13,3 +13,7 @@ export async function getSetting(key: string, defaultValue: string): Promise<str
 export async function getPhotoPriceCents(): Promise<number> {
   return Number(await getSetting('photo_price_cents', '500'))
 }
+
+export async function isCashPaymentEnabled(): Promise<boolean> {
+  return (await getSetting('cash_payment_enabled', 'true')) === 'true'
+}

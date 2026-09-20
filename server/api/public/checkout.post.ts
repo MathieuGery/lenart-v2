@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { eq, sql, inArray } from 'drizzle-orm'
 import { photos, orders, orderItems, pricingFormulas, promoCodes } from '~~/server/database/schema'
 import { db } from '~~/server/utils/db'
-import { getPhotoPriceCents } from '~~/server/utils/settings'
+import { getPhotoPriceCents, isCashPaymentEnabled } from '~~/server/utils/settings'
 
 const bodySchema = z.object({
   firstName: z.string().min(1).max(255),
@@ -21,6 +21,9 @@ const bodySchema = z.object({
 
 export default defineEventHandler(async (event) => {
   const body = await readValidatedBody(event, bodySchema.parse)
+  if (body.paymentMethod === 'cash' && !(await isCashPaymentEnabled())) {
+    throw createError({ statusCode: 400, message: 'Le paiement en espèces est temporairement indisponible' })
+  }
   const config = useRuntimeConfig()
   const appUrl = config.appUrl as string
 

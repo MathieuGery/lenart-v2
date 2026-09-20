@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { eq, sql, inArray } from 'drizzle-orm'
 import { photos, orders, orderItems, pricingFormulas, promoCodes } from '~~/server/database/schema'
 import { db } from '~~/server/utils/db'
-import { getPhotoPriceCents } from '~~/server/utils/settings'
+import { getPhotoPriceCents, isCashPaymentEnabled } from '~~/server/utils/settings'
 
 const subOrderSchema = z.object({
   photoIds: z.array(z.string().uuid()).max(100).optional(),
@@ -32,6 +32,9 @@ const bodySchema = z.object({
 
 export default defineEventHandler(async (event) => {
   const body = await readValidatedBody(event, bodySchema.parse)
+  if (body.paymentMethod === 'cash' && !(await isCashPaymentEnabled())) {
+    throw createError({ statusCode: 400, message: 'Le paiement en espèces est désactivé' })
+  }
   const appUrl = process.env.NUXT_APP_URL ?? 'https://v2.len-art.fr'
 
   // Resolve promo code once for all sub-orders

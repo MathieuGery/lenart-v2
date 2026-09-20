@@ -12,6 +12,7 @@ const watermarkOpacity = ref(Number(settings.value?.watermark_opacity ?? 40))
 const watermarkMode = ref<'grid' | 'centered'>(settings.value?.watermark_mode === 'centered' ? 'centered' : 'grid')
 const filenameSize = ref(Number(settings.value?.filename_size ?? 2))
 const contactNotificationEmail = ref(settings.value?.contact_notification_email ?? '')
+const cashPaymentEnabled = ref(settings.value?.cash_payment_enabled !== 'false')
 const saving = ref(false)
 
 // Watermark
@@ -67,7 +68,8 @@ async function save() {
         watermark_opacity: String(watermarkOpacity.value),
         watermark_mode: watermarkMode.value,
         filename_size: String(filenameSize.value),
-        contact_notification_email: contactNotificationEmail.value
+        contact_notification_email: contactNotificationEmail.value,
+        cash_payment_enabled: String(cashPaymentEnabled.value)
       }
     })
     await refresh()
@@ -360,6 +362,32 @@ async function save() {
             <p class="text-xs text-muted">
               Taille du texte par rapport à la largeur de l'image. 2% par défaut.
             </p>
+          </div>
+        </div>
+
+        <!-- Paiement -->
+        <div class="space-y-4">
+          <div>
+            <h2 class="text-sm font-medium">
+              Paiement
+            </h2>
+            <p class="text-xs text-muted mt-1">
+              Choisissez les modes de paiement proposés lors de la commande.
+            </p>
+          </div>
+
+          <div class="border border-default rounded-lg p-4">
+            <label class="flex items-start gap-3 cursor-pointer">
+              <input
+                v-model="cashPaymentEnabled"
+                type="checkbox"
+                class="mt-0.5 size-4 accent-stone-600"
+              >
+              <span>
+                <span class="block text-sm font-medium">Autoriser le paiement en espèces</span>
+                <span class="block text-xs text-muted mt-1">Affiche l'option « Espèces » sur la page de commande et dans la création de commande administrateur.</span>
+              </span>
+            </label>
           </div>
         </div>
 

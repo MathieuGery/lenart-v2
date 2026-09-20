@@ -3,6 +3,8 @@ definePageMeta({ layout: 'public' })
 
 const cart = useCart()
 const router = useRouter()
+const { data: paymentSettings } = await useFetch<{ cashPaymentEnabled: boolean }>('/api/public/settings')
+const cashPaymentEnabled = computed(() => paymentSettings.value?.cashPaymentEnabled ?? true)
 
 const form = reactive({
   firstName: '',
@@ -248,6 +250,7 @@ async function submitOrder() {
                     <span class="text-[10px] text-muted text-center leading-tight">Paiement sécurisé CB</span>
                   </button>
                   <button
+                    v-if="cashPaymentEnabled"
                     type="button"
                     class="flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border-2 transition-colors text-sm"
                     :class="form.paymentMethod === 'cash' ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
