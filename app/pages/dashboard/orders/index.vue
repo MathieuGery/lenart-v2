@@ -1350,7 +1350,6 @@ const filteredOrders = computed(() => {
                 <span class="text-xs text-muted text-center">Lien Mollie au client</span>
               </button>
               <button
-                v-if="cashPaymentEnabled"
                 type="button"
                 class="flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors text-sm"
                 :class="form.paymentMethod === 'terminal' ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"
@@ -1361,6 +1360,7 @@ const filteredOrders = computed(() => {
                 <span class="text-xs text-muted text-center">Paiement via TPE</span>
               </button>
               <button
+                v-if="cashPaymentEnabled"
                 type="button"
                 class="flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors text-sm"
                 :class="form.paymentMethod === 'cash' ? 'border-primary bg-primary/5' : 'border-default hover:border-muted'"

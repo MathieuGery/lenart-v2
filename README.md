@@ -19,6 +19,7 @@ Plateforme de vente de photos de concours équestres. Les clients peuvent parcou
 - Gestion des collections et import de photos
 - Gestion des commandes : création depuis le stand, suivi, modification
 - Paiement par lien Mollie ou via terminal TPE
+- Le réglage du paiement en espèces ne masque que l'option espèces ; le TPE reste disponible.
 - Conversion des commandes espèces en paiement en ligne
 - Relance des paiements échoués
 - Commentaires internes sur les commandes
