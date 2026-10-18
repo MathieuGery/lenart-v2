@@ -11,6 +11,7 @@ watch(() => route.path, () => {
 const links = [
   { label: 'Concours', to: '/concours' },
   { label: 'Galeries', to: '/galeries' },
+  { label: 'Tarifs', to: '/tarifs' },
   { label: 'À propos', to: '/about' },
   { label: 'Contact', to: '/contact' }
 ]
