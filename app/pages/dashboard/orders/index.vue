@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useLocalStorage } from '@vueuse/core'
+
 const toast = useToast()
 const { data: orders, refresh } = await useFetch<OrderListItem[]>('/api/orders')
 
@@ -488,7 +490,7 @@ const search = ref('')
 
 // Date filter
 type DateRange = 'today' | 'week' | 'month' | 'all'
-const dateRange = ref<DateRange>('all')
+const dateRange = useLocalStorage<DateRange>('dashboard-orders-date-range', 'all', { initOnMounted: true })
 
 const DATE_RANGE_LABEL: Record<DateRange, string> = {
   today: 'Aujourd\'hui',
